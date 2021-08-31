@@ -9,31 +9,36 @@
 
 jest.dontMock('../CoreManager');
 jest.dontMock('../decode');
+jest.dontMock('../encode');
 jest.dontMock('../escape');
 jest.dontMock('../ParseConfig');
 jest.dontMock('../ParseError');
 jest.dontMock('../ParseFile');
 jest.dontMock('../ParseGeoPoint');
-jest.dontMock('../ParsePromise');
 jest.dontMock('../RESTController');
 jest.dontMock('../Storage');
 jest.dontMock('../StorageController.default');
+jest.dontMock('./test_helpers/mockAsyncStorage');
 
-var CoreManager = require('../CoreManager');
-var ParseConfig = require('../ParseConfig').default;
-var ParseGeoPoint = require('../ParseGeoPoint').default;
-var ParsePromise = require('../ParsePromise').default;
-var Storage = require('../Storage');
+const mockAsyncStorage = require('./test_helpers/mockAsyncStorage');
+const CoreManager = require('../CoreManager');
+const ParseConfig = require('../ParseConfig').default;
+const ParseGeoPoint = require('../ParseGeoPoint').default;
+const Storage = require('../Storage');
 
 CoreManager.set('APPLICATION_ID', 'A');
 CoreManager.set('JAVASCRIPT_KEY', 'B');
 
 describe('ParseConfig', () => {
+  beforeEach(() => {
+    ParseConfig._clearCache();
+  });
+
   it('exposes attributes via get()', () => {
-    var c = new ParseConfig();
+    const c = new ParseConfig();
     c.attributes = {
       str: 'hello',
-      num: 44
+      num: 44,
     };
     expect(c.get('str')).toBe('hello');
     expect(c.get('num')).toBe(44);
@@ -41,90 +46,239 @@ describe('ParseConfig', () => {
   });
 
   it('exposes escaped attributes', () => {
-    var c = new ParseConfig();
+    const c = new ParseConfig();
     c.attributes = {
       brackets: '<>',
-      phone: 'AT&T'
+      phone: 'AT&T',
     };
     expect(c.escape('brackets')).toBe('&lt;&gt;');
+    expect(c.escape('phone')).toBe('AT&amp;T');
     expect(c.escape('phone')).toBe('AT&amp;T');
   });
 
   it('can retrieve the current config from disk or cache', () => {
-    var path = Storage.generatePath('currentConfig');
-    Storage.setItem(path, JSON.stringify({
-      count: 12,
-      point: {
-        __type: 'GeoPoint',
-        latitude: 20.02,
-        longitude: 30.03
-      }
-    }));
+    const path = Storage.generatePath('currentConfig');
+    Storage.setItem(
+      path,
+      JSON.stringify({
+        count: 12,
+        point: {
+          __type: 'GeoPoint',
+          latitude: 20.02,
+          longitude: 30.03,
+        },
+      })
+    );
     expect(ParseConfig.current().attributes).toEqual({
       count: 12,
-      point: new ParseGeoPoint(20.02, 30.03)
+      point: new ParseGeoPoint(20.02, 30.03),
+    });
+    expect(ParseConfig.current().attributes).toEqual({
+      count: 12,
+      point: new ParseGeoPoint(20.02, 30.03),
     });
   });
 
-  it('can get a config object from the network', (done) => {
+  it('can handle decodedData error', async () => {
+    const currentStorage = CoreManager.getStorageController();
+    CoreManager.setStorageController(mockAsyncStorage);
+    const path = Storage.generatePath('currentConfig');
+    await Storage.setItemAsync(path, {});
+    const config = await ParseConfig.current();
+    expect(config.attributes).toEqual({});
+    CoreManager.setStorageController(currentStorage);
+  });
+
+  it('can retrieve the current config from async storage', async () => {
+    const currentStorage = CoreManager.getStorageController();
+    CoreManager.setStorageController(mockAsyncStorage);
+    const path = Storage.generatePath('currentConfig');
+    await Storage.setItemAsync(
+      path,
+      JSON.stringify({
+        count: 12,
+        point: {
+          __type: 'GeoPoint',
+          latitude: 20.02,
+          longitude: 30.03,
+        },
+      })
+    );
+    const config = await ParseConfig.current();
+    expect(config.attributes).toEqual({
+      count: 12,
+      point: new ParseGeoPoint(20.02, 30.03),
+    });
+    CoreManager.setStorageController(currentStorage);
+  });
+
+  it('can get a config object from the network', done => {
     CoreManager.setRESTController({
-      request(method, path, body, options) {
-        return ParsePromise.as({
+      request() {
+        return Promise.resolve({
           params: {
             str: 'hello',
             num: 45,
             file: {
               __type: 'File',
               name: 'parse.txt',
-              url: 'https://files.parsetfss.com/a/parse.txt'
-            }
-          }
+              url: 'https://files.parsetfss.com/a/parse.txt',
+            },
+          },
         });
       },
-      ajax() {}
+      ajax() {},
     });
-    ParseConfig.get().then((config) => {
+    ParseConfig.get().then(config => {
       expect(config.get('str')).toBe('hello');
       expect(config.get('num')).toBe(45);
       expect(config.get('file').name()).toBe('parse.txt');
-      var path = Storage.generatePath('currentConfig');
+      const path = Storage.generatePath('currentConfig');
       expect(JSON.parse(Storage.getItem(path))).toEqual({
         str: 'hello',
         num: 45,
         file: {
           __type: 'File',
           name: 'parse.txt',
-          url: 'https://files.parsetfss.com/a/parse.txt'
-        }
+          url: 'https://files.parsetfss.com/a/parse.txt',
+        },
       });
 
       done();
     });
   });
 
-  it('rejects the promise when an invalid payload comes back', (done) => {
+  it('can save a config object with masterkey', done => {
+    //Load a request that match the get() & save() request
     CoreManager.setRESTController({
-      request(method, path, body, options) {
-        return ParsePromise.as(null);
+      request() {
+        return Promise.resolve({
+          params: {
+            str: 'hello2',
+            num: 46,
+          },
+          result: true,
+        });
       },
-      ajax() {}
+      ajax() {},
     });
-    ParseConfig.get().then(null, (error) => {
-      expect(error.code).toBe(107);
-      expect(error.message).toBe('Config JSON response invalid.');
-
+    ParseConfig.save({ str: 'hello2', num: 46 }).then(config => {
+      expect(config.get('str')).toBe('hello2');
+      expect(config.get('num')).toBe(46);
+      const path = Storage.generatePath('currentConfig');
+      expect(JSON.parse(Storage.getItem(path))).toEqual({
+        str: 'hello2',
+        num: 46,
+      });
       done();
     });
   });
 
-  it('rejects the promise when the http request fails', (done) => {
+  it('can save a config object that be retrieved with masterkey only', async () => {
     CoreManager.setRESTController({
       request(method, path, body, options) {
-        return ParsePromise.error('failure');
+        if (method === 'PUT') {
+          expect(method).toBe('PUT');
+          expect(path).toBe('config');
+          expect(body).toEqual({
+            params: { internal: 'i', number: 12 },
+            masterKeyOnly: { internal: true },
+          });
+          expect(options).toEqual({ useMasterKey: true });
+          return Promise.resolve({
+            params: {
+              internal: 'i',
+              number: 12,
+            },
+            result: true,
+          });
+        } else if (method === 'GET') {
+          expect(method).toBe('GET');
+          expect(path).toBe('config');
+          expect(body).toEqual({});
+          expect(options).toEqual({ useMasterKey: true });
+          return Promise.resolve({
+            params: {
+              internal: 'i',
+              number: 12,
+            },
+          });
+        }
       },
-      ajax() {}
+      ajax() {},
     });
-    ParseConfig.get().then(null, (error) => {
+    const config = await ParseConfig.save({ internal: 'i', number: 12 }, { internal: true });
+    expect(config.get('internal')).toBe('i');
+    expect(config.get('number')).toBe(12);
+  });
+
+  it('can get a config object with master key', async () => {
+    CoreManager.setRESTController({
+      request(method, path, body, options) {
+        expect(method).toBe('GET');
+        expect(path).toBe('config');
+        expect(body).toEqual({});
+        expect(options).toEqual({ useMasterKey: true });
+        return Promise.resolve({
+          params: {
+            str: 'hello',
+            num: 45,
+          },
+        });
+      },
+      ajax() {},
+    });
+    const config = await ParseConfig.get({ useMasterKey: true });
+    expect(config.get('str')).toBe('hello');
+    expect(config.get('num')).toBe(45);
+    const path = Storage.generatePath('currentConfig');
+    expect(JSON.parse(Storage.getItem(path))).toEqual({
+      str: 'hello',
+      num: 45,
+    });
+  });
+
+  it('rejects save on invalid response', done => {
+    CoreManager.setRESTController({
+      request() {
+        return Promise.resolve({ result: false });
+      },
+      ajax() {},
+    });
+    ParseConfig.save({ str: 'hello2', num: 46 }).then(
+      config => {
+        expect(config).toBe(1);
+        done();
+      },
+      error => {
+        expect(error.code).toBe(1);
+        done();
+      }
+    );
+  });
+
+  it('rejects the promise when an invalid payload comes back', done => {
+    CoreManager.setRESTController({
+      request() {
+        return Promise.resolve(null);
+      },
+      ajax() {},
+    });
+    ParseConfig.get().then(null, error => {
+      expect(error.code).toBe(107);
+      expect(error.message).toBe('Config JSON response invalid.');
+      done();
+    });
+  });
+
+  it('rejects the promise when the http request fails', done => {
+    CoreManager.setRESTController({
+      request() {
+        return Promise.reject('failure');
+      },
+      ajax() {},
+    });
+    ParseConfig.get().then(null, error => {
       expect(error).toBe('failure');
       done();
     });

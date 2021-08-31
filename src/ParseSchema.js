@@ -10,32 +10,55 @@
  */
 
 import CoreManager from './CoreManager';
-import ParsePromise from './ParsePromise';
+import ParseObject from './ParseObject';
+import ParseCLP from './ParseCLP';
 
-import type { RequestOptions, FullOptions } from './RESTController';
+import type { PermissionsMap } from './ParseCLP';
 
-const FIELD_TYPES = ['String', 'Number', 'Boolean', 'Date', 'File', 'GeoPoint', 'Polygon', 'Array', 'Object', 'Pointer', 'Relation'];
+const FIELD_TYPES = [
+  'String',
+  'Number',
+  'Boolean',
+  'Date',
+  'File',
+  'GeoPoint',
+  'Polygon',
+  'Array',
+  'Object',
+  'Pointer',
+  'Relation',
+];
+
+type FieldOptions = {
+  required: boolean,
+  defaultValue: mixed,
+};
 
 /**
  * A Parse.Schema object is for handling schema data from Parse.
  * <p>All the schemas methods require MasterKey.
  *
+ * When adding fields, you may set required and default values. (Requires Parse Server 3.7.0+)
+ *
  * <pre>
+ * const options = { required: true, defaultValue: 'hello world' };
  * const schema = new Parse.Schema('MyClass');
- * schema.addString('field');
- * schema.addIndex('index_name', {'field', 1});
+ * schema.addString('field', options);
+ * schema.addIndex('index_name', { 'field': 1 });
  * schema.save();
  * </pre>
  * </p>
+ *
  * @alias Parse.Schema
  */
 class ParseSchema {
   className: string;
   _fields: { [key: string]: mixed };
   _indexes: { [key: string]: mixed };
+  _clp: { [key: string]: mixed };
 
   /**
-   * @param {String} className Parse Class string.
+   * @param {string} className Parse Class string.
    */
   constructor(className: string) {
     if (typeof className === 'string') {
@@ -53,191 +76,111 @@ class ParseSchema {
   /**
    * Static method to get all schemas
    *
-   * @param {Object} options A Backbone-style options object.
-   * Valid options are:<ul>
-   *   <li>success: A Backbone-style success callback
-   *   <li>error: An Backbone-style error callback.
-   *   <li>useMasterKey: In Cloud Code and Node only, causes the Master Key to
-   *     be used for this request.
-   *   <li>sessionToken: A valid session token, used for making a request on
-   *       behalf of a specific user.
-   * </ul>
-   *
-   * @return {Parse.Promise} A promise that is resolved with the result when
+   * @returns {Promise} A promise that is resolved with the result when
    * the query completes.
    */
-  static all(options: FullOptions) {
-    options = options || {};
+  static all() {
     const controller = CoreManager.getSchemaController();
-
-    return controller.get('', options)
-      .then((response) => {
-        if (response.results.length === 0) {
-          throw new Error('Schema not found.');
-        }
-        return response.results;
-      })._thenRunCallbacks(options);
+    return controller.get('').then(response => {
+      if (response.results.length === 0) {
+        throw new Error('Schema not found.');
+      }
+      return response.results;
+    });
   }
 
   /**
    * Get the Schema from Parse
    *
-   * @param {Object} options A Backbone-style options object.
-   * Valid options are:<ul>
-   *   <li>success: A Backbone-style success callback
-   *   <li>error: An Backbone-style error callback.
-   *   <li>useMasterKey: In Cloud Code and Node only, causes the Master Key to
-   *     be used for this request.
-   *   <li>sessionToken: A valid session token, used for making a request on
-   *       behalf of a specific user.
-   * </ul>
-   *
-   * @return {Parse.Promise} A promise that is resolved with the result when
+   * @returns {Promise} A promise that is resolved with the result when
    * the query completes.
    */
-  get(options: FullOptions) {
+  get() {
     this.assertClassName();
 
-    options = options || {};
     const controller = CoreManager.getSchemaController();
-
-    return controller.get(this.className, options)
-      .then((response) => {
-        if (!response) {
-          throw new Error('Schema not found.');
-        }
-        return response;
-      })._thenRunCallbacks(options);
+    return controller.get(this.className).then(response => {
+      if (!response) {
+        throw new Error('Schema not found.');
+      }
+      return response;
+    });
   }
 
   /**
    * Create a new Schema on Parse
    *
-   * @param {Object} options A Backbone-style options object.
-   * Valid options are:<ul>
-   *   <li>success: A Backbone-style success callback
-   *   <li>error: An Backbone-style error callback.
-   *   <li>useMasterKey: In Cloud Code and Node only, causes the Master Key to
-   *     be used for this request.
-   *   <li>sessionToken: A valid session token, used for making a request on
-   *       behalf of a specific user.
-   * </ul>
-   *
-   * @return {Parse.Promise} A promise that is resolved with the result when
+   * @returns {Promise} A promise that is resolved with the result when
    * the query completes.
    */
-  save(options: FullOptions) {
+  save() {
     this.assertClassName();
 
-    options = options || {};
     const controller = CoreManager.getSchemaController();
     const params = {
       className: this.className,
       fields: this._fields,
       indexes: this._indexes,
+      classLevelPermissions: this._clp,
     };
 
-    return controller.create(this.className, params, options)
-      .then((response) => {
-        return response;
-      })._thenRunCallbacks(options);
+    return controller.create(this.className, params);
   }
 
   /**
    * Update a Schema on Parse
    *
-   * @param {Object} options A Backbone-style options object.
-   * Valid options are:<ul>
-   *   <li>success: A Backbone-style success callback
-   *   <li>error: An Backbone-style error callback.
-   *   <li>useMasterKey: In Cloud Code and Node only, causes the Master Key to
-   *     be used for this request.
-   *   <li>sessionToken: A valid session token, used for making a request on
-   *       behalf of a specific user.
-   * </ul>
-   *
-   * @return {Parse.Promise} A promise that is resolved with the result when
+   * @returns {Promise} A promise that is resolved with the result when
    * the query completes.
    */
-  update(options: FullOptions) {
+  update() {
     this.assertClassName();
 
-    options = options || {};
     const controller = CoreManager.getSchemaController();
     const params = {
       className: this.className,
       fields: this._fields,
       indexes: this._indexes,
+      classLevelPermissions: this._clp,
     };
 
     this._fields = {};
     this._indexes = {};
 
-    return controller.update(this.className, params, options)
-      .then((response) => {
-        return response;
-      })._thenRunCallbacks(options);
+    return controller.update(this.className, params);
   }
 
   /**
    * Removing a Schema from Parse
    * Can only be used on Schema without objects
    *
-   * @param {Object} options A Backbone-style options object.
-   * Valid options are:<ul>
-   *   <li>success: A Backbone-style success callback
-   *   <li>error: An Backbone-style error callback.
-   *   <li>useMasterKey: In Cloud Code and Node only, causes the Master Key to
-   *     be used for this request.
-   *   <li>sessionToken: A valid session token, used for making a request on
-   *       behalf of a specific user.
-   * </ul>
-   *
-   * @return {Parse.Promise} A promise that is resolved with the result when
+   * @returns {Promise} A promise that is resolved with the result when
    * the query completes.
    */
-  delete(options: FullOptions) {
+  delete() {
     this.assertClassName();
 
-    options = options || {};
     const controller = CoreManager.getSchemaController();
-
-    return controller.delete(this.className, options)
-      .then((response) => {
-        return response;
-      })._thenRunCallbacks(options);
+    return controller.delete(this.className);
   }
 
   /**
    * Removes all objects from a Schema (class) in Parse.
    * EXERCISE CAUTION, running this will delete all objects for this schema and cannot be reversed
    *
-   * @param {Object} options A Backbone-style options object.
-   * Valid options are:<ul>
-   *   <li>success: A Backbone-style success callback
-   *   <li>error: An Backbone-style error callback.
-   *   <li>useMasterKey: In Cloud Code and Node only, causes the Master Key to
-   *     be used for this request.
-   *   <li>sessionToken: A valid session token, used for making a request on
-   *       behalf of a specific user.
-   * </ul>
-   *
-   * @return {Parse.Promise} A promise that is resolved with the result when
+   * @returns {Promise} A promise that is resolved with the result when
    * the query completes.
    */
-  purge(options: FullOptions) {
+  purge() {
     this.assertClassName();
 
     const controller = CoreManager.getSchemaController();
-
-    return controller.purge(this.className)
-      .then((response) => {
-        return response;
-      })._thenRunCallbacks(options);
+    return controller.purge(this.className);
   }
 
   /**
    * Assert if ClassName has been filled
+   *
    * @private
    */
   assertClassName() {
@@ -247,13 +190,35 @@ class ParseSchema {
   }
 
   /**
+   * Sets Class Level Permissions when creating / updating a Schema.
+   * EXERCISE CAUTION, running this may override CLP for this schema and cannot be reversed
+   *
+   * @param {object | Parse.CLP} clp Class Level Permissions
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
+   */
+  setCLP(clp: PermissionsMap | ParseCLP) {
+    if (clp instanceof ParseCLP) {
+      this._clp = clp.toJSON();
+    } else {
+      this._clp = clp;
+    }
+    return this;
+  }
+
+  /**
    * Adding a Field to Create / Update a Schema
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @param {String} type TheCan be a (String|Number|Boolean|Date|Parse.File|Parse.GeoPoint|Array|Object|Pointer|Parse.Relation)
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {string} type Can be a (String|Number|Boolean|Date|Parse.File|Parse.GeoPoint|Array|Object|Pointer|Parse.Relation)
+   * @param {object} options
+   * Valid options are:<ul>
+   *   <li>required: If field is not set, save operation fails (Requires Parse Server 3.7.0+)
+   *   <li>defaultValue: If field is not set, a default value is selected (Requires Parse Server 3.7.0+)
+   *   <li>targetClass: Required if type is Pointer or Parse.Relation
+   * </ul>
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addField(name: string, type: string) {
+  addField(name: string, type: string, options: FieldOptions = {}) {
     type = type || 'String';
 
     if (!name) {
@@ -262,18 +227,34 @@ class ParseSchema {
     if (FIELD_TYPES.indexOf(type) === -1) {
       throw new Error(`${type} is not a valid type.`);
     }
+    if (type === 'Pointer') {
+      return this.addPointer(name, options.targetClass, options);
+    }
+    if (type === 'Relation') {
+      return this.addRelation(name, options.targetClass, options);
+    }
+    const fieldOptions = { type };
 
-    this._fields[name] = { type };
-
+    if (typeof options.required === 'boolean') {
+      fieldOptions.required = options.required;
+    }
+    if (options.defaultValue !== undefined) {
+      fieldOptions.defaultValue = options.defaultValue;
+    }
+    this._fields[name] = fieldOptions;
     return this;
   }
 
   /**
    * Adding an Index to Create / Update a Schema
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @param {String} type Can be a (String|Number|Boolean|Date|Parse.File|Parse.GeoPoint|Array|Object|Pointer|Parse.Relation)
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the index
+   * @param {object} index { field: value }
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
+   *
+   * <pre>
+   * schema.addIndex('index_name', { 'field': 1 });
+   * </pre>
    */
   addIndex(name: string, index: any) {
     if (!name) {
@@ -291,122 +272,144 @@ class ParseSchema {
   /**
    * Adding String Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addString(name: string) {
-    return this.addField(name, 'String');
+  addString(name: string, options: FieldOptions) {
+    return this.addField(name, 'String', options);
   }
 
   /**
    * Adding Number Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addNumber(name: string) {
-    return this.addField(name, 'Number');
+  addNumber(name: string, options: FieldOptions) {
+    return this.addField(name, 'Number', options);
   }
 
   /**
    * Adding Boolean Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addBoolean(name: string) {
-    return this.addField(name, 'Boolean');
+  addBoolean(name: string, options: FieldOptions) {
+    return this.addField(name, 'Boolean', options);
   }
 
   /**
    * Adding Date Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addDate(name: string) {
-    return this.addField(name, 'Date');
+  addDate(name: string, options: FieldOptions) {
+    if (options && options.defaultValue) {
+      options.defaultValue = {
+        __type: 'Date',
+        iso: new Date(options.defaultValue),
+      };
+    }
+    return this.addField(name, 'Date', options);
   }
 
   /**
    * Adding File Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addFile(name: string) {
-    return this.addField(name, 'File');
+  addFile(name: string, options: FieldOptions) {
+    return this.addField(name, 'File', options);
   }
 
   /**
    * Adding GeoPoint Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addGeoPoint(name: string) {
-    return this.addField(name, 'GeoPoint');
+  addGeoPoint(name: string, options: FieldOptions) {
+    return this.addField(name, 'GeoPoint', options);
   }
 
   /**
    * Adding Polygon Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addPolygon(name: string) {
-    return this.addField(name, 'Polygon');
+  addPolygon(name: string, options: FieldOptions) {
+    return this.addField(name, 'Polygon', options);
   }
 
   /**
    * Adding Array Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addArray(name: string) {
-    return this.addField(name, 'Array');
+  addArray(name: string, options: FieldOptions) {
+    return this.addField(name, 'Array', options);
   }
 
   /**
    * Adding Object Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addObject(name: string) {
-    return this.addField(name, 'Object');
+  addObject(name: string, options: FieldOptions) {
+    return this.addField(name, 'Object', options);
   }
 
   /**
    * Adding Pointer Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @param {String} targetClass Name of the target Pointer Class
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {string} targetClass Name of the target Pointer Class
+   * @param {object} options See {@link https://parseplatform.org/Parse-SDK-JS/api/master/Parse.Schema.html#addField addField}
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
-  addPointer(name: string, targetClass: string) {
+  addPointer(name: string, targetClass: string, options: FieldOptions = {}) {
     if (!name) {
       throw new Error('field name may not be null.');
     }
     if (!targetClass) {
       throw new Error('You need to set the targetClass of the Pointer.');
     }
+    const fieldOptions = { type: 'Pointer', targetClass };
 
-    this._fields[name] = {
-      type: 'Pointer',
-      targetClass
-    };
-
+    if (typeof options.required === 'boolean') {
+      fieldOptions.required = options.required;
+    }
+    if (options.defaultValue !== undefined) {
+      fieldOptions.defaultValue = options.defaultValue;
+      if (options.defaultValue instanceof ParseObject) {
+        fieldOptions.defaultValue = options.defaultValue.toPointer();
+      }
+    }
+    this._fields[name] = fieldOptions;
     return this;
   }
 
   /**
    * Adding Relation Field
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @param {String} targetClass Name of the target Pointer Class
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field that will be created on Parse
+   * @param {string} targetClass Name of the target Pointer Class
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
   addRelation(name: string, targetClass: string) {
     if (!name) {
@@ -418,7 +421,7 @@ class ParseSchema {
 
     this._fields[name] = {
       type: 'Relation',
-      targetClass
+      targetClass,
     };
 
     return this;
@@ -427,66 +430,54 @@ class ParseSchema {
   /**
    * Deleting a Field to Update on a Schema
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @param {String} targetClass Name of the target Pointer Class
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
   deleteField(name: string) {
-    this._fields[name] = { __op: 'Delete'};
+    this._fields[name] = { __op: 'Delete' };
+    return this;
   }
 
-   /**
+  /**
    * Deleting an Index to Update on a Schema
    *
-   * @param {String} name Name of the field that will be created on Parse
-   * @param {String} targetClass Name of the target Pointer Class
-   * @return {Parse.Schema} Returns the schema, so you can chain this call.
+   * @param {string} name Name of the field
+   * @returns {Parse.Schema} Returns the schema, so you can chain this call.
    */
   deleteIndex(name: string) {
-    this._indexes[name] = { __op: 'Delete'};
+    this._indexes[name] = { __op: 'Delete' };
+    return this;
   }
 }
 
 const DefaultController = {
-  send(className: string, method: string, params: any, options: RequestOptions): ParsePromise {
+  send(className: string, method: string, params: any = {}): Promise {
     const RESTController = CoreManager.getRESTController();
-    const requestOptions = { useMasterKey: true };
-    if (options.hasOwnProperty('sessionToken')) {
-      requestOptions.sessionToken = options.sessionToken;
-    }
-    return RESTController.request(
-      method,
-      `schemas/${className}`,
-      params,
-      requestOptions
-    );
+    return RESTController.request(method, `schemas/${className}`, params, {
+      useMasterKey: true,
+    });
   },
 
-  get(className: string, options: RequestOptions): ParsePromise {
-    return this.send(className, 'GET', {}, options);
+  get(className: string): Promise {
+    return this.send(className, 'GET');
   },
 
-  create(className: string, params: any, options: RequestOptions): ParsePromise {
-    return this.send(className, 'POST', params, options);
+  create(className: string, params: any): Promise {
+    return this.send(className, 'POST', params);
   },
 
-  update(className: string, params: any, options: RequestOptions): ParsePromise {
-    return this.send(className, 'PUT', params, options);
+  update(className: string, params: any): Promise {
+    return this.send(className, 'PUT', params);
   },
 
-  delete(className: string, options: RequestOptions): ParsePromise {
-    return this.send(className, 'DELETE', {}, options);
+  delete(className: string): Promise {
+    return this.send(className, 'DELETE');
   },
 
-  purge(className: string): ParsePromise {
+  purge(className: string): Promise {
     const RESTController = CoreManager.getRESTController();
-    return RESTController.request(
-      'DELETE',
-      `purge/${className}`,
-      {},
-      { useMasterKey: true }
-    );
-  }
+    return RESTController.request('DELETE', `purge/${className}`, {}, { useMasterKey: true });
+  },
 };
 
 CoreManager.setSchemaController(DefaultController);

@@ -10,21 +10,21 @@
 jest.dontMock('../arrayContainsObject');
 jest.dontMock('../unique');
 
-var localCount = 0;
-var mockObject = function(className, id) {
+let localCount = 0;
+const mockObject = function (className, id) {
   this.className = className;
   this.id = id;
   if (!id) {
     this._localId = 'local' + localCount++;
   }
-}
-mockObject.prototype._getId = function() {
+};
+mockObject.prototype._getId = function () {
   return this.id || this._localId;
-}
+};
 jest.setMock('../ParseObject', mockObject);
 
-var unique = require('../unique').default;
-var ParseObject = require('../ParseObject');
+const unique = require('../unique').default;
+const ParseObject = require('../ParseObject');
 
 describe('unique', () => {
   it('produces an array with unique elements', () => {
@@ -37,28 +37,23 @@ describe('unique', () => {
   });
 
   it('dedups objects by their id', () => {
-    var o = new ParseObject('Item');
+    const o = new ParseObject('Item');
     expect(unique([o, o, o])).toEqual([o]);
-    expect(unique([
-      new ParseObject('Item'),
-      new ParseObject('Item')
-    ]).length).toBe(2);
-    expect(unique([
-      new ParseObject('Item', 'a'),
-      new ParseObject('Item', 'b'),
-      new ParseObject('Item', 'a')
-    ])).toEqual([
-      new ParseObject('Item', 'a'),
-      new ParseObject('Item', 'b')
-    ]);
-    expect(unique([
-      new ParseObject('Item', 'a'),
-      new ParseObject('Item', 'b'),
-      new ParseObject('Item', 'b'),
-      new ParseObject('Item', 'a')
-    ])).toEqual([
-      new ParseObject('Item', 'a'),
-      new ParseObject('Item', 'b')
-    ]);
+    expect(unique([new ParseObject('Item'), new ParseObject('Item')]).length).toBe(2);
+    expect(
+      unique([
+        new ParseObject('Item', 'a'),
+        new ParseObject('Item', 'b'),
+        new ParseObject('Item', 'a'),
+      ])
+    ).toEqual([new ParseObject('Item', 'a'), new ParseObject('Item', 'b')]);
+    expect(
+      unique([
+        new ParseObject('Item', 'a'),
+        new ParseObject('Item', 'b'),
+        new ParseObject('Item', 'b'),
+        new ParseObject('Item', 'a'),
+      ])
+    ).toEqual([new ParseObject('Item', 'a'), new ParseObject('Item', 'b')]);
   });
 });

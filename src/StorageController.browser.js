@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * @flow
+ * @private
  */
+/* global localStorage */
 
-import ParsePromise from './ParsePromise';
-
-var StorageController = {
+const StorageController = {
   async: 0,
 
   getItem(path: string): ?string {
@@ -23,6 +23,7 @@ var StorageController = {
       localStorage.setItem(path, value);
     } catch (e) {
       // Quota exceeded, possibly due to Safari Private Browsing mode
+      console.log(e.message);
     }
   },
 
@@ -30,9 +31,17 @@ var StorageController = {
     localStorage.removeItem(path);
   },
 
+  getAllKeys() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      keys.push(localStorage.key(i));
+    }
+    return keys;
+  },
+
   clear() {
     localStorage.clear();
-  }
+  },
 };
 
 module.exports = StorageController;

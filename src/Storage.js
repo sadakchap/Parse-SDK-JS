@@ -10,66 +10,75 @@
  */
 
 import CoreManager from './CoreManager';
-import ParsePromise from './ParsePromise';
 
-var Storage = {
+const Storage = {
   async(): boolean {
-    var controller = CoreManager.getStorageController();
+    const controller = CoreManager.getStorageController();
     return !!controller.async;
   },
 
   getItem(path: string): ?string {
-    var controller = CoreManager.getStorageController();
+    const controller = CoreManager.getStorageController();
     if (controller.async === 1) {
-      throw new Error(
-        'Synchronous storage is not supported by the current storage controller'
-      );
+      throw new Error('Synchronous storage is not supported by the current storage controller');
     }
     return controller.getItem(path);
   },
 
-  getItemAsync(path: string): ParsePromise {
-    var controller = CoreManager.getStorageController();
+  getItemAsync(path: string): Promise<string> {
+    const controller = CoreManager.getStorageController();
     if (controller.async === 1) {
       return controller.getItemAsync(path);
     }
-    return ParsePromise.as(controller.getItem(path));
+    return Promise.resolve(controller.getItem(path));
   },
 
   setItem(path: string, value: string): void {
-    var controller = CoreManager.getStorageController();
+    const controller = CoreManager.getStorageController();
     if (controller.async === 1) {
-      throw new Error(
-        'Synchronous storage is not supported by the current storage controller'
-      );
+      throw new Error('Synchronous storage is not supported by the current storage controller');
     }
     return controller.setItem(path, value);
   },
 
-  setItemAsync(path: string, value: string): ParsePromise {
-    var controller = CoreManager.getStorageController();
+  setItemAsync(path: string, value: string): Promise<void> {
+    const controller = CoreManager.getStorageController();
     if (controller.async === 1) {
       return controller.setItemAsync(path, value);
     }
-    return ParsePromise.as(controller.setItem(path, value));
+    return Promise.resolve(controller.setItem(path, value));
   },
 
   removeItem(path: string): void {
-    var controller = CoreManager.getStorageController();
+    const controller = CoreManager.getStorageController();
     if (controller.async === 1) {
-      throw new Error(
-        'Synchronous storage is not supported by the current storage controller'
-      );
+      throw new Error('Synchronous storage is not supported by the current storage controller');
     }
     return controller.removeItem(path);
   },
 
-  removeItemAsync(path: string): ParsePromise {
-    var controller = CoreManager.getStorageController();
+  removeItemAsync(path: string): Promise<void> {
+    const controller = CoreManager.getStorageController();
     if (controller.async === 1) {
       return controller.removeItemAsync(path);
     }
-    return ParsePromise.as(controller.removeItem(path));
+    return Promise.resolve(controller.removeItem(path));
+  },
+
+  getAllKeys(): Array<string> {
+    const controller = CoreManager.getStorageController();
+    if (controller.async === 1) {
+      throw new Error('Synchronous storage is not supported by the current storage controller');
+    }
+    return controller.getAllKeys();
+  },
+
+  getAllKeysAsync(): Promise<Array<string>> {
+    const controller = CoreManager.getStorageController();
+    if (controller.async === 1) {
+      return controller.getAllKeysAsync();
+    }
+    return Promise.resolve(controller.getAllKeys());
   },
 
   generatePath(path: string): string {
@@ -86,11 +95,11 @@ var Storage = {
   },
 
   _clear() {
-    var controller = CoreManager.getStorageController();
+    const controller = CoreManager.getStorageController();
     if (controller.hasOwnProperty('clear')) {
       controller.clear();
     }
-  }
+  },
 };
 
 module.exports = Storage;
@@ -99,6 +108,8 @@ if (process.env.PARSE_BUILD === 'react-native') {
   CoreManager.setStorageController(require('./StorageController.react-native'));
 } else if (process.env.PARSE_BUILD === 'browser') {
   CoreManager.setStorageController(require('./StorageController.browser'));
+} else if (process.env.PARSE_BUILD === 'weapp') {
+  CoreManager.setStorageController(require('./StorageController.weapp'));
 } else {
   CoreManager.setStorageController(require('./StorageController.default'));
 }

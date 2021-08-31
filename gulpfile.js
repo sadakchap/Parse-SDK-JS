@@ -1,29 +1,46 @@
-var babel      = require('gulp-babel');
-var browserify = require('browserify');
-var derequire  = require('gulp-derequire');
-var gulp       = require('gulp');
-var insert     = require('gulp-insert');
-var path       = require('path');
-var rename     = require('gulp-rename');
-var replace    = require('gulp-replace');
-var source     = require('vinyl-source-stream');
-var uglify     = require('gulp-uglify');
+const babel      = require('gulp-babel');
+const browserify = require('browserify');
+const derequire  = require('gulp-derequire');
+const gulp       = require('gulp');
+const insert     = require('gulp-insert');
+const path       = require('path');
+const rename     = require('gulp-rename');
+const source     = require('vinyl-source-stream');
+const uglify     = require('gulp-uglify');
+const watch      = require('gulp-watch');
 
-var BUILD = process.env.PARSE_BUILD || 'browser';
-var VERSION = require('./package.json').version;
+const BUILD = process.env.PARSE_BUILD || 'browser';
+const VERSION = require('./package.json').version;
 
-var PRESETS = {
-  'browser': ['es2015', 'react', 'stage-2'],
-  'node': ['es2015', 'react', 'stage-2'],
-  'react-native': ['react'],
+const transformRuntime = ["@babel/plugin-transform-runtime", {
+  "corejs": 3,
+  "helpers": true,
+  "regenerator": true,
+  "useESModules": false
+}];
+
+const PRESETS = {
+  'browser': [["@babel/preset-env", {
+    "targets": "> 0.25%, not dead"
+  }], '@babel/preset-react'],
+  'weapp': [["@babel/preset-env", {
+    "targets": "> 0.25%, not dead"
+  }], '@babel/preset-react'],
+  'node': [["@babel/preset-env", {
+    "targets": { "node": "8" }
+  }]],
+  'react-native': ['module:metro-react-native-babel-preset'],
 };
-var PLUGINS = {
-  'browser': ['inline-package-json', 'transform-inline-environment-variables', 'transform-runtime'],
-  'node': ['inline-package-json', 'transform-inline-environment-variables', 'transform-runtime'],
-  'react-native': ['inline-package-json', 'transform-inline-environment-variables'],
+const PLUGINS = {
+  'browser': [transformRuntime, '@babel/plugin-transform-flow-comments', '@babel/plugin-proposal-class-properties', 'inline-package-json',
+    ['transform-inline-environment-variables', {'exclude': ['SERVER_RENDERING']}]],
+  'weapp': [transformRuntime, '@babel/plugin-transform-flow-comments', '@babel/plugin-proposal-class-properties', 'inline-package-json',
+    ['transform-inline-environment-variables', {'exclude': ['SERVER_RENDERING']}]],
+  'node': ['@babel/plugin-transform-flow-comments', 'inline-package-json', 'transform-inline-environment-variables'],
+  'react-native': ['@babel/plugin-transform-flow-comments', 'inline-package-json', 'transform-inline-environment-variables']
 };
 
-var DEV_HEADER = (
+const DEV_HEADER = (
   '/**\n' +
   ' * Parse JavaScript SDK v' + VERSION + '\n' +
   ' *\n' +
@@ -32,7 +49,7 @@ var DEV_HEADER = (
   ' */\n'
 );
 
-var FULL_HEADER = (
+const FULL_HEADER = (
   '/**\n' +
   ' * Parse JavaScript SDK v' + VERSION + '\n' +
   ' *\n' +
@@ -48,9 +65,6 @@ var FULL_HEADER = (
 );
 
 gulp.task('compile', function() {
-  var packageJSON = {
-    version: VERSION
-  };
   return gulp.src('src/*.js')
     .pipe(babel({
       presets: PRESETS[BUILD],
@@ -63,17 +77,38 @@ gulp.task('compile', function() {
     .pipe(gulp.dest(path.join('lib', BUILD)));
 });
 
-gulp.task('browserify', function() {
-  var stream = browserify({
+gulp.task('browserify', function(cb) {
+  const stream = browserify({
     builtins: ['_process', 'events'],
     entries: 'lib/browser/Parse.js',
     standalone: 'Parse'
   })
-  .exclude('xmlhttprequest')
-  .ignore('_process')
-  .bundle();
-
+    .exclude('xmlhttprequest')
+    .ignore('_process')
+    .bundle();
+  stream.on('end', () => {
+    cb();
+  });
   return stream.pipe(source('parse.js'))
+    .pipe(derequire())
+    .pipe(insert.prepend(DEV_HEADER))
+    .pipe(gulp.dest('./dist'));
+});
+
+
+gulp.task('browserify-weapp', function(cb) {
+  const stream = browserify({
+    builtins: ['_process', 'events'],
+    entries: 'lib/weapp/Parse.js',
+    standalone: 'Parse'
+  })
+    .exclude('xmlhttprequest')
+    .ignore('_process')
+    .bundle();
+  stream.on('end', () => {
+    cb();
+  });
+  return stream.pipe(source('parse.weapp.js'))
     .pipe(derequire())
     .pipe(insert.prepend(DEV_HEADER))
     .pipe(gulp.dest('./dist'));
@@ -85,4 +120,25 @@ gulp.task('minify', function() {
     .pipe(insert.prepend(FULL_HEADER))
     .pipe(rename({ extname: '.min.js' }))
     .pipe(gulp.dest('./dist'))
+});
+
+gulp.task('minify-weapp', function() {
+  return gulp.src('dist/parse.weapp.js')
+    .pipe(uglify())
+    .pipe(insert.prepend(FULL_HEADER))
+    .pipe(rename({ extname: '.min.js' }))
+    .pipe(gulp.dest('./dist'))
+});
+
+gulp.task('watch', function() {
+  return watch('src/*.js', { ignoreInitial: false, verbose: true })
+    .pipe(babel({
+      presets: PRESETS[BUILD],
+      plugins: PLUGINS[BUILD],
+    }))
+    // Second pass to kill BUILD-switched code
+    .pipe(babel({
+      plugins: ['minify-dead-code-elimination'],
+    }))
+    .pipe(gulp.dest(path.join('lib', BUILD)));
 });

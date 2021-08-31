@@ -9,37 +9,20 @@
  * @flow
  */
 
-import CoreManager from './CoreManager';
-import ParsePromise from './ParsePromise';
 import Storage from './Storage';
+const uuidv4 = require('./uuid');
 
-var iidCache = null;
+let iidCache = null;
 
-function hexOctet() {
-  return Math.floor(
-    (1 + Math.random()) * 0x10000
-  ).toString(16).substring(1);
-}
-
-function generateId() {
-  return (
-    hexOctet() + hexOctet() + '-' +
-    hexOctet() + '-' +
-    hexOctet() + '-' +
-    hexOctet() + '-' +
-    hexOctet() + hexOctet() + hexOctet()
-  );
-}
-
-var InstallationController = {
-  currentInstallationId(): ParsePromise {
+const InstallationController = {
+  currentInstallationId(): Promise<string> {
     if (typeof iidCache === 'string') {
-      return ParsePromise.as(iidCache);
+      return Promise.resolve(iidCache);
     }
-    var path = Storage.generatePath('installationId');
-    return Storage.getItemAsync(path).then((iid) => {
+    const path = Storage.generatePath('installationId');
+    return Storage.getItemAsync(path).then(iid => {
       if (!iid) {
-        iid = generateId();
+        iid = uuidv4();
         return Storage.setItemAsync(path, iid).then(() => {
           iidCache = iid;
           return iid;
@@ -56,7 +39,7 @@ var InstallationController = {
 
   _setInstallationIdCache(iid: string) {
     iidCache = iid;
-  }
+  },
 };
 
 module.exports = InstallationController;

@@ -12,7 +12,6 @@
 import encode from './encode';
 import ParseFile from './ParseFile';
 import ParseObject from './ParseObject';
-import ParsePromise from './ParsePromise';
 import ParseRelation from './ParseRelation';
 import TaskQueue from './TaskQueue';
 import { RelationOp } from './ParseOp';
@@ -24,11 +23,11 @@ export type OpsMap = { [attr: string]: Op };
 export type ObjectCache = { [attr: string]: string };
 
 export type State = {
-  serverData: AttributeMap;
-  pendingOps: Array<OpsMap>;
-  objectCache: ObjectCache;
-  tasks: TaskQueue;
-  existed: boolean
+  serverData: AttributeMap,
+  pendingOps: Array<OpsMap>,
+  objectCache: ObjectCache,
+  tasks: TaskQueue,
+  existed: boolean,
 };
 
 export function defaultState(): State {
@@ -37,12 +36,12 @@ export function defaultState(): State {
     pendingOps: [{}],
     objectCache: {},
     tasks: new TaskQueue(),
-    existed: false
+    existed: false,
   };
 }
 
 export function setServerData(serverData: AttributeMap, attributes: AttributeMap) {
-  for (let attr in attributes) {
+  for (const attr in attributes) {
     if (typeof attributes[attr] !== 'undefined') {
       serverData[attr] = attributes[attr];
     } else {
@@ -52,7 +51,7 @@ export function setServerData(serverData: AttributeMap, attributes: AttributeMap
 }
 
 export function setPendingOp(pendingOps: Array<OpsMap>, attr: string, op: ?Op) {
-  let last = pendingOps.length - 1;
+  const last = pendingOps.length - 1;
   if (op) {
     pendingOps[last][attr] = op;
   } else {
@@ -65,7 +64,7 @@ export function pushPendingState(pendingOps: Array<OpsMap>) {
 }
 
 export function popPendingState(pendingOps: Array<OpsMap>): OpsMap {
-  let first = pendingOps.shift();
+  const first = pendingOps.shift();
   if (!pendingOps.length) {
     pendingOps[0] = {};
   }
@@ -73,11 +72,11 @@ export function popPendingState(pendingOps: Array<OpsMap>): OpsMap {
 }
 
 export function mergeFirstPendingState(pendingOps: Array<OpsMap>) {
-  let first = popPendingState(pendingOps);
-  let next = pendingOps[0];
-  for (let attr in first) {
+  const first = popPendingState(pendingOps);
+  const next = pendingOps[0];
+  for (const attr in first) {
     if (next[attr] && first[attr]) {
-      let merged = next[attr].mergeWith(first[attr]);
+      const merged = next[attr].mergeWith(first[attr]);
       if (merged) {
         next[attr] = merged;
       }
@@ -87,17 +86,19 @@ export function mergeFirstPendingState(pendingOps: Array<OpsMap>) {
   }
 }
 
-export function estimateAttribute(serverData: AttributeMap, pendingOps: Array<OpsMap>, className: string, id: ?string, attr: string): mixed {
+export function estimateAttribute(
+  serverData: AttributeMap,
+  pendingOps: Array<OpsMap>,
+  className: string,
+  id: ?string,
+  attr: string
+): mixed {
   let value = serverData[attr];
   for (let i = 0; i < pendingOps.length; i++) {
     if (pendingOps[i][attr]) {
       if (pendingOps[i][attr] instanceof RelationOp) {
         if (id) {
-          value = pendingOps[i][attr].applyTo(
-            value,
-            { className: className, id: id },
-            attr
-          );
+          value = pendingOps[i][attr].applyTo(value, { className: className, id: id }, attr);
         }
       } else {
         value = pendingOps[i][attr].applyTo(value);
@@ -107,8 +108,13 @@ export function estimateAttribute(serverData: AttributeMap, pendingOps: Array<Op
   return value;
 }
 
-export function estimateAttributes(serverData: AttributeMap, pendingOps: Array<OpsMap>, className: string, id: ?string): AttributeMap {
-  let data = {};
+export function estimateAttributes(
+  serverData: AttributeMap,
+  pendingOps: Array<OpsMap>,
+  className: string,
+  id: ?string
+): AttributeMap {
+  const data = {};
   let attr;
   for (attr in serverData) {
     data[attr] = serverData[attr];
@@ -124,24 +130,59 @@ export function estimateAttributes(serverData: AttributeMap, pendingOps: Array<O
           );
         }
       } else {
-        data[attr] = pendingOps[i][attr].applyTo(data[attr]);
+        if (attr.includes('.')) {
+          // convert a.b.c into { a: { b: { c: value } } }
+          const fields = attr.split('.');
+          const first = fields[0];
+          const last = fields[fields.length - 1];
+          data[first] = { ...serverData[first] };
+          let object = { ...data };
+          for (let i = 0; i < fields.length - 1; i++) {
+            const key = fields[i];
+            if (!(key in object)) {
+              object[key] = {};
+            }
+            object = object[key];
+          }
+          object[last] = pendingOps[i][attr].applyTo(object[last]);
+        } else {
+          data[attr] = pendingOps[i][attr].applyTo(data[attr]);
+        }
       }
     }
   }
   return data;
 }
 
-export function commitServerChanges(serverData: AttributeMap, objectCache: ObjectCache, changes: AttributeMap) {
-  for (let attr in changes) {
-    let val = changes[attr];
-    serverData[attr] = val;
-    if (val &&
+function nestedSet(obj, key, value) {
+  const path = key.split('.');
+  for (let i = 0; i < path.length - 1; i++) {
+    if (!(path[i] in obj)) obj[path[i]] = {};
+    obj = obj[path[i]];
+  }
+  if (typeof value === 'undefined') {
+    delete obj[path[path.length - 1]];
+  } else {
+    obj[path[path.length - 1]] = value;
+  }
+}
+
+export function commitServerChanges(
+  serverData: AttributeMap,
+  objectCache: ObjectCache,
+  changes: AttributeMap
+) {
+  for (const attr in changes) {
+    const val = changes[attr];
+    nestedSet(serverData, attr, val);
+    if (
+      val &&
       typeof val === 'object' &&
       !(val instanceof ParseObject) &&
       !(val instanceof ParseFile) &&
       !(val instanceof ParseRelation)
     ) {
-      let json = encode(val, false, true);
+      const json = encode(val, false, true);
       objectCache[attr] = JSON.stringify(json);
     }
   }

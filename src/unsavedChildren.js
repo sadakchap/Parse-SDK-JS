@@ -14,34 +14,36 @@ import ParseObject from './ParseObject';
 import ParseRelation from './ParseRelation';
 
 type EncounterMap = {
-  objects: { [identifier: string]: ParseObject | boolean; };
-  files: Array<ParseFile>;
+  objects: { [identifier: string]: ParseObject | boolean },
+  files: Array<ParseFile>,
 };
 
 /**
  * Return an array of unsaved children, which are either Parse Objects or Files.
  * If it encounters any dirty Objects without Ids, it will throw an exception.
+ *
+ * @param {Parse.Object} obj
+ * @param {boolean} allowDeepUnsaved
+ * @returns {Array}
  */
 export default function unsavedChildren(
   obj: ParseObject,
   allowDeepUnsaved?: boolean
 ): Array<ParseFile | ParseObject> {
-  var encountered = {
+  const encountered = {
     objects: {},
-    files: []
+    files: [],
   };
-  var identifier = obj.className + ':' + obj._getId();
-  encountered.objects[identifier] = (
-    obj.dirty() ? obj : true
-  );
-  var attributes = obj.attributes;
-  for (var attr in attributes) {
+  const identifier = obj.className + ':' + obj._getId();
+  encountered.objects[identifier] = obj.dirty() ? obj : true;
+  const attributes = obj.attributes;
+  for (const attr in attributes) {
     if (typeof attributes[attr] === 'object') {
       traverse(attributes[attr], encountered, false, !!allowDeepUnsaved);
     }
   }
-  var unsaved = [];
-  for (var id in encountered.objects) {
+  const unsaved = [];
+  for (const id in encountered.objects) {
     if (id !== identifier && encountered.objects[id] !== true) {
       unsaved.push(encountered.objects[id]);
     }
@@ -59,13 +61,11 @@ function traverse(
     if (!obj.id && shouldThrow) {
       throw new Error('Cannot create a pointer to an unsaved Object.');
     }
-    var identifier = obj.className + ':' + obj._getId();
+    const identifier = obj.className + ':' + obj._getId();
     if (!encountered.objects[identifier]) {
-      encountered.objects[identifier] = (
-        obj.dirty() ? obj : true
-      );
-      var attributes = obj.attributes;
-      for (var attr in attributes) {
+      encountered.objects[identifier] = obj.dirty() ? obj : true;
+      const attributes = obj.attributes;
+      for (const attr in attributes) {
         if (typeof attributes[attr] === 'object') {
           traverse(attributes[attr], encountered, !allowDeepUnsaved, allowDeepUnsaved);
         }
@@ -83,13 +83,13 @@ function traverse(
     return;
   }
   if (Array.isArray(obj)) {
-    obj.forEach((el) => {
+    obj.forEach(el => {
       if (typeof el === 'object') {
         traverse(el, encountered, shouldThrow, allowDeepUnsaved);
       }
     });
   }
-  for (var k in obj) {
+  for (const k in obj) {
     if (typeof obj[k] === 'object') {
       traverse(obj[k], encountered, shouldThrow, allowDeepUnsaved);
     }

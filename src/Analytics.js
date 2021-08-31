@@ -11,8 +11,6 @@
 
 import CoreManager from './CoreManager';
 
-import type ParsePromise from './ParsePromise';
-
 /**
  * Parse.Analytics provides an interface to Parse's logging and analytics
  * backend.
@@ -22,43 +20,38 @@ import type ParsePromise from './ParsePromise';
  * @hideconstructor
  */
 
- /**
-  * Tracks the occurrence of a custom event with additional dimensions.
-  * Parse will store a data point at the time of invocation with the given
-  * event name.
-  *
-  * Dimensions will allow segmentation of the occurrences of this custom
-  * event. Keys and values should be {@code String}s, and will throw
-  * otherwise.
-  *
-  * To track a user signup along with additional metadata, consider the
-  * following:
-  * <pre>
-  * var dimensions = {
-  *  gender: 'm',
-  *  source: 'web',
-  *  dayType: 'weekend'
-  * };
-  * Parse.Analytics.track('signup', dimensions);
-  * </pre>
-  *
-  * There is a default limit of 8 dimensions per event tracked.
-  *
-  * @method track
-  * @name Parse.Analytics.track
-  * @param {String} name The name of the custom event to report to Parse as
-  * having happened.
-  * @param {Object} dimensions The dictionary of information by which to
-  * segment this event.
-  * @param {Object} options A Backbone-style callback object.
-  * @return {Parse.Promise} A promise that is resolved when the round-trip
-  * to the server completes.
-  */
-export function track(
-    name: string,
-    dimensions: { [key: string]: string },
-    options?: mixed
-  ): ParsePromise {
+/**
+ * Tracks the occurrence of a custom event with additional dimensions.
+ * Parse will store a data point at the time of invocation with the given
+ * event name.
+ *
+ * Dimensions will allow segmentation of the occurrences of this custom
+ * event. Keys and values should be {@code String}s, and will throw
+ * otherwise.
+ *
+ * To track a user signup along with additional metadata, consider the
+ * following:
+ * <pre>
+ * var dimensions = {
+ *  gender: 'm',
+ *  source: 'web',
+ *  dayType: 'weekend'
+ * };
+ * Parse.Analytics.track('signup', dimensions);
+ * </pre>
+ *
+ * There is a default limit of 8 dimensions per event tracked.
+ *
+ * @function track
+ * @name Parse.Analytics.track
+ * @param {string} name The name of the custom event to report to Parse as
+ * having happened.
+ * @param {object} dimensions The dictionary of information by which to
+ * segment this event.
+ * @returns {Promise} A promise that is resolved when the round-trip
+ * to the server completes.
+ */
+export function track(name: string, dimensions: { [key: string]: string }): Promise {
   name = name || '';
   name = name.replace(/^\s*/, '');
   name = name.replace(/\s*$/, '');
@@ -66,28 +59,21 @@ export function track(
     throw new TypeError('A name for the custom event must be provided');
   }
 
-  for (var key in dimensions) {
+  for (const key in dimensions) {
     if (typeof key !== 'string' || typeof dimensions[key] !== 'string') {
-      throw new TypeError(
-        'track() dimensions expects keys and values of type "string".'
-      );
+      throw new TypeError('track() dimensions expects keys and values of type "string".');
     }
   }
 
-  options = options || {};
-  return (
-    CoreManager.getAnalyticsController()
-      .track(name, dimensions)
-      ._thenRunCallbacks(options)
-  );
+  return CoreManager.getAnalyticsController().track(name, dimensions);
 }
 
-var DefaultController = {
+const DefaultController = {
   track(name, dimensions) {
-    var path = 'events/' + name;
-    var RESTController = CoreManager.getRESTController();
+    const path = 'events/' + name;
+    const RESTController = CoreManager.getRESTController();
     return RESTController.request('POST', path, { dimensions: dimensions });
-  }
+  },
 };
 
 CoreManager.setAnalyticsController(DefaultController);

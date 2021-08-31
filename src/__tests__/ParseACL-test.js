@@ -9,99 +9,102 @@
 
 jest.dontMock('../ParseACL');
 
-var mockRole = function(name) {
+const mockRole = function (name) {
   this.name = name;
 };
-mockRole.prototype.getName = function() {
+mockRole.prototype.getName = function () {
   return this.name;
-}
+};
 jest.setMock('../ParseRole', mockRole);
 
-var ParseACL = require('../ParseACL').default;
-var ParseUser = require('../ParseUser').default;
-var ParseRole = require('../ParseRole');
+const ParseACL = require('../ParseACL').default;
+const ParseUser = require('../ParseUser').default;
+const ParseRole = require('../ParseRole');
 
 describe('ParseACL', () => {
   it('can be constructed with no arguments', () => {
-    var a = new ParseACL();
+    const a = new ParseACL();
     expect(a.permissionsById).toEqual({});
   });
 
   it('can be constructed with a ParseUser', () => {
-    var u = new ParseUser();
+    const u = new ParseUser();
     u.id = 'uid';
-    var a = new ParseACL(u);
+    const a = new ParseACL(u);
     expect(a.permissionsById).toEqual({ uid: { read: true, write: true } });
   });
 
   it('can be constructed with a map of user IDs', () => {
-    var a = new ParseACL({ aUserId: { read: true, write: false } });
+    const a = new ParseACL({ aUserId: { read: true, write: false } });
     expect(a.permissionsById).toEqual({
       aUserId: {
         read: true,
-        write: false
-      }
+        write: false,
+      },
     });
   });
 
   it('throws when constructed with an invalid permissions map', () => {
-    var err = function() {
+    let err = function () {
       new ParseACL({ aUserId: { foo: true, bar: false } });
     };
-    expect(err).toThrow(
-      'Tried to create an ACL with an invalid permission type.'
-    );
-    err = function() {
+    expect(err).toThrow('Tried to create an ACL with an invalid permission type.');
+    err = function () {
       new ParseACL({ aUserId: { read: 12 } });
     };
-    expect(err).toThrow(
-      'Tried to create an ACL with an invalid permission value.'
-    );
+    expect(err).toThrow('Tried to create an ACL with an invalid permission value.');
   });
 
   it('throws a helpful error when constructed with a function', () => {
-    expect(function() {
-      new ParseACL(function() { });
+    expect(function () {
+      new ParseACL(function () {});
     }).toThrow('ParseACL constructed with a function. Did you forget ()?');
   });
 
   it('throws when setting an invalid user id', () => {
-    var a = new ParseACL();
-    expect(a.setReadAccess.bind(a, 12, true)).toThrow(
-      'userId must be a string.'
-    );
+    const a = new ParseACL();
+    expect(a.setReadAccess.bind(a, 12, true)).toThrow('userId must be a string.');
+
+    expect(() => {
+      a.getReadAccess(new ParseUser(), true);
+    }).toThrow('Cannot get access for a ParseUser without an ID');
   });
 
   it('throws when setting an invalid access', () => {
-    var a = new ParseACL();
-    expect(a.setReadAccess.bind(a, 'aUserId', 12)).toThrow(
-      'allowed must be either true or false.'
-    );
+    const a = new ParseACL();
+    expect(a.setReadAccess.bind(a, 'aUserId', 12)).toThrow('allowed must be either true or false.');
+  });
+
+  it('throws when role does not have name', () => {
+    const a = new ParseACL();
+    expect(() => {
+      a.setReadAccess(new ParseRole(), true);
+    }).toThrow('Role must have a name');
+
+    expect(() => {
+      a.getReadAccess(new ParseRole(), true);
+    }).toThrow('Role must have a name');
   });
 
   it('throws when setting an invalid role', () => {
-    var a = new ParseACL();
-    expect(a.setRoleReadAccess.bind(a, 12, true)).toThrow(
-      'role must be a ParseRole or a String'
-    );
+    const a = new ParseACL();
+    expect(a.setRoleReadAccess.bind(a, 12, true)).toThrow('role must be a ParseRole or a String');
 
-    expect(a.setRoleWriteAccess.bind(a, 12, true)).toThrow(
-      'role must be a ParseRole or a String'
-    );
+    expect(a.setRoleWriteAccess.bind(a, 12, true)).toThrow('role must be a ParseRole or a String');
   });
 
   it('can be rendered to JSON format', () => {
-    var a = new ParseACL({ aUserId: { read: true, write: false } });
+    const a = new ParseACL({ aUserId: { read: true, write: false } });
     expect(a.toJSON()).toEqual({
       aUserId: {
         read: true,
-        write: false
-      }
+        write: false,
+      },
     });
   });
 
   it('can set read access for a user', () => {
-    var a = new ParseACL();
+    const a = new ParseACL();
     expect(a.permissionsById).toEqual({});
 
     // removing a permission that doesn't exist does nothing
@@ -111,8 +114,8 @@ describe('ParseACL', () => {
     a.setReadAccess('aUserId', true);
     expect(a.permissionsById).toEqual({
       aUserId: {
-        read: true
-      }
+        read: true,
+      },
     });
 
     a.setReadAccess('aUserId', false);
@@ -120,19 +123,19 @@ describe('ParseACL', () => {
   });
 
   it('can get read access for a user', () => {
-    var a = new ParseACL({
+    const a = new ParseACL({
       aUserId: {
         read: true,
-        write: false
-      }
+        write: false,
+      },
     });
 
     expect(a.getReadAccess('aUserId')).toBe(true);
   });
 
   it('can set write access for a user', () => {
-    var a = new ParseACL();
-    var u = new ParseUser();
+    const a = new ParseACL();
+    const u = new ParseUser();
     u.id = 'aUserId';
 
     expect(a.permissionsById).toEqual({});
@@ -147,8 +150,8 @@ describe('ParseACL', () => {
     a.setWriteAccess('aUserId', true);
     expect(a.permissionsById).toEqual({
       aUserId: {
-        write: true
-      }
+        write: true,
+      },
     });
 
     a.setWriteAccess('aUserId', false);
@@ -157,8 +160,8 @@ describe('ParseACL', () => {
     a.setWriteAccess(u, true);
     expect(a.permissionsById).toEqual({
       aUserId: {
-        write: true
-      }
+        write: true,
+      },
     });
 
     a.setWriteAccess(u, false);
@@ -166,14 +169,14 @@ describe('ParseACL', () => {
   });
 
   it('can get write access for a user', () => {
-    var a = new ParseACL({
+    const a = new ParseACL({
       aUserId: {
         read: true,
-        write: false
-      }
+        write: false,
+      },
     });
 
-    var u = new ParseUser();
+    const u = new ParseUser();
     u.id = 'aUserId';
 
     expect(a.getWriteAccess('aUserId')).toBe(false);
@@ -181,15 +184,15 @@ describe('ParseACL', () => {
   });
 
   it('can set public read access', () => {
-    var a = new ParseACL();
+    const a = new ParseACL();
     expect(a.permissionsById).toEqual({});
     expect(a.getPublicReadAccess()).toBe(false);
 
     a.setPublicReadAccess(true);
     expect(a.permissionsById).toEqual({
       '*': {
-        read: true
-      }
+        read: true,
+      },
     });
     expect(a.getPublicReadAccess()).toBe(true);
 
@@ -198,15 +201,15 @@ describe('ParseACL', () => {
   });
 
   it('can set public write access', () => {
-    var a = new ParseACL();
+    const a = new ParseACL();
     expect(a.permissionsById).toEqual({});
     expect(a.getPublicWriteAccess()).toBe(false);
 
     a.setPublicWriteAccess(true);
     expect(a.permissionsById).toEqual({
       '*': {
-        write: true
-      }
+        write: true,
+      },
     });
     expect(a.getPublicWriteAccess()).toBe(true);
 
@@ -215,11 +218,11 @@ describe('ParseACL', () => {
   });
 
   it('can get role read access', () => {
-    var a = new ParseACL({
+    const a = new ParseACL({
       'role:admin': {
         read: true,
-        write: true
-      }
+        write: true,
+      },
     });
 
     expect(a.getRoleReadAccess('admin')).toBe(true);
@@ -228,11 +231,11 @@ describe('ParseACL', () => {
   });
 
   it('can get role write access', () => {
-    var a = new ParseACL({
+    const a = new ParseACL({
       'role:admin': {
         read: true,
-        write: true
-      }
+        write: true,
+      },
     });
 
     expect(a.getRoleWriteAccess('admin')).toBe(true);
@@ -241,17 +244,13 @@ describe('ParseACL', () => {
   });
 
   it('throws when fetching an invalid role', () => {
-    var a = new ParseACL();
-    expect(a.getRoleReadAccess.bind(null, 5)).toThrow(
-      'role must be a ParseRole or a String'
-    );
-    expect(a.getRoleWriteAccess.bind(null, 5)).toThrow(
-      'role must be a ParseRole or a String'
-    );
+    const a = new ParseACL();
+    expect(a.getRoleReadAccess.bind(null, 5)).toThrow('role must be a ParseRole or a String');
+    expect(a.getRoleWriteAccess.bind(null, 5)).toThrow('role must be a ParseRole or a String');
   });
 
   it('can set role read access', () => {
-    var a = new ParseACL();
+    const a = new ParseACL();
 
     expect(a.getRoleReadAccess('admin')).toBe(false);
     expect(a.getRoleReadAccess(new ParseRole('admin'))).toBe(false);
@@ -268,7 +267,7 @@ describe('ParseACL', () => {
   });
 
   it('can set role write access', () => {
-    var a = new ParseACL();
+    const a = new ParseACL();
 
     expect(a.getRoleWriteAccess('admin')).toBe(false);
     expect(a.getRoleWriteAccess(new ParseRole('admin'))).toBe(false);
@@ -285,8 +284,8 @@ describe('ParseACL', () => {
   });
 
   it('can test equality against another ACL', () => {
-    var a = new ParseACL();
-    var b = new ParseACL();
+    const a = new ParseACL();
+    const b = new ParseACL();
 
     expect(a.equals(a)).toBe(true);
 
@@ -339,5 +338,13 @@ describe('ParseACL', () => {
     b.setReadAccess('aUserId', true);
     expect(a.equals(b)).toBe(false);
     expect(b.equals(a)).toBe(false);
+    expect(a.equals({})).toBe(false);
+
+    b.setWriteAccess('newUserId', true);
+    expect(a.equals(b)).toBe(false);
+
+    a.setPublicReadAccess(false);
+    a.permissionsById.newUserId = { write: false };
+    expect(a.equals(b)).toBe(false);
   });
 });
