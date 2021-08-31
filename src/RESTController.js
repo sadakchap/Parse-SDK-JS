@@ -13,8 +13,6 @@ const uuidv4 = require('./uuid');
 
 import CoreManager from './CoreManager';
 import ParseError from './ParseError';
-import ParsePromise from './ParsePromise';
-import Storage from './Storage';
 import settings from './settings';
 import { resolvingPromise } from './promiseUtils';
 
@@ -120,7 +118,7 @@ const RESTController = {
       }
 
       xhr.onreadystatechange = function() {
-        if (xhr.readyState !== 4 || handled|| xhr._aborted) {
+        if (xhr.readyState !== 4 || handled || xhr._aborted) {
           return;
         }
         handled = true;
