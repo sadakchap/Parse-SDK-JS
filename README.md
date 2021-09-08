@@ -1,17 +1,31 @@
-# Parse SDK for JavaScript
+<p align="center">
+    <img alt="Parse Platform" src="https://github.com/parse-community/Parse-SDK-JS/raw/master/.github/parse-logo.png" width="200">
+</p>
 
-[![Build Status][build-status-svg]][build-status-link]
-[![Test Coverage][coverage-status-svg]][coverage-status-link]
-[![Npm Version][npm-svg]][npm-link]
-[![CDNJS version][cdn-svg]][cdn-link]
-[![Join The Conversation][discourse-svg]][discourse-link]
-[![Greenkeeper badge][greenkeeper-svg]][greenkeeper-link]
-[![License][license-svg]][license-link]
-[![Backers on Open Collective](https://opencollective.com/parse-server/backers/badge.svg)][open-collective-link]
-[![Sponsors on Open Collective](https://opencollective.com/parse-server/sponsors/badge.svg)][open-collective-link]
-[![Twitter Follow](https://img.shields.io/twitter/follow/ParsePlatform.svg?label=Follow%20us%20on%20Twitter&style=social)](https://twitter.com/intent/follow?screen_name=ParsePlatform)
+<h2 align="center">Parse SDK for JavaScript</h2>
 
-A library that gives you access to the powerful Parse cloud platform from your JavaScript app. For more information on Parse and its features, see [the website](http://parseplatform.org), [the JavaScript guide](http://docs.parseplatform.org/js/guide/) or [API Reference](http://parseplatform.org/Parse-SDK-JS/api/).
+<p align="center">
+    A library that gives you access to the powerful Parse Server backend from your JavaScript app.
+</p>
+
+<p align="center">
+    <a href="https://twitter.com/intent/follow?screen_name=parseplatform"><img alt="Follow on Twitter" src="https://img.shields.io/twitter/follow/parseplatform?style=social&label=Follow"></a>
+    <a href="https://community.parseplatform.org/"><img alt="Join the conversation" src="https://img.shields.io/discourse/https/community.parseplatform.org/topics.svg"></a>
+    <a href="https://github.com/parse-community/Parse-SDK-JS/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-BSD-lightgrey.svg"></a>
+    <a href="https://github.com/parse-community/Parse-SDK-JS/actions?query=workflow%3Aci+branch%3Amaster"><img alt="Build status" src="https://github.com/parse-community/Parse-SDK-JS/workflows/ci/badge.svg?branch=master"></a>
+    <a href="#backers"><img alt="Backers on Open Collective" src="https://opencollective.com/parse-server/backers/badge.svg" /></a>
+  <a href="#sponsors"><img alt="Sponsors on Open Collective" src="https://opencollective.com/parse-server/sponsors/badge.svg" /></a>
+</p>
+
+<p align="center">
+    <a href="http://codecov.io/github/parse-community/Parse-SDK-JS?branch=master"><img alt="Test coverage" src="http://codecov.io/github/parse-community/Parse-SDK-JS/coverage.svg?branch=master"></a>
+    <a href="https://npmjs.org/parse"><img alt="npm version" src="https://badge.fury.io/js/parse.svg"></a>
+    <a href="https://cdnjs.com/libraries/parse"><img alt="CDNJS version" src="https://img.shields.io/cdnjs/v/parse.svg"></a>
+    <a href="https://greenkeeper.io/"><img alt="Greenkeeper badge" src="https://badges.greenkeeper.io/parse-community/Parse-SDK-JS.svg"></a>
+</p>
+<br>
+
+For more information on Parse and its features, see [the website](https://parseplatform.org), [the JavaScript guide](https://docs.parseplatform.org/js/guide/), [the Cloud Code guide](https://docs.parseplatform.org/cloudcode/guide/) or [API Reference](https://parseplatform.org/Parse-SDK-JS/api/).
 
 ## Getting Started
 
@@ -26,6 +40,14 @@ To use the npm modules for a browser based application, include it as you normal
 
 ```js
 const Parse = require('parse');
+// ES6 Minimized
+import Parse from 'parse/dist/parse.min.js';
+```
+
+For web worker or browser applications, indexedDB storage is available:
+
+```js
+Parse.CoreManager.setStorageController(Parse.IndexedDB);
 ```
 
 For server-side applications or Node.js command line tools, include `'parse/node'`:
@@ -35,15 +57,22 @@ For server-side applications or Node.js command line tools, include `'parse/node
 const Parse = require('parse/node');
 ```
 
-For React Native applications, include `'parse/react-native'`:
+For React Native applications, include `'parse/react-native.js'`:
 ```js
 // In a React Native application
-const Parse = require('parse/react-native');
+const Parse = require('parse/react-native.js');
 
 // On React Native >= 0.50 and Parse >= 1.11.0, set the Async
 const AsyncStorage = require('react-native').AsyncStorage;
 Parse.setAsyncStorage(AsyncStorage);
 ```
+
+For WeChat miniprogram, include `'parse/weapp'`:
+```js
+// In a WeChat miniprogram
+const Parse = require('parse/weapp');
+```
+If you want to use a pre-compiled file, you can fetch it from [unpkg](https://unpkg.com). The development version is available at [https://unpkg.com/parse/dist/parse.weapp.js](https://unpkg.com/parse/dist/parse.weapp.js), and the minified production version is at [https://unpkg.com/parse/dist/parse.weapp.min.js](https://unpkg.com/parse/dist/parse.weapp.min.js).
 
 For TypeScript applications, install `'@types/parse'`:
 ```
@@ -56,7 +85,11 @@ Types are updated manually after every release. If a definition doesn't exist, p
 
 With Parse SDK 2.0.0, gone are the backbone style callbacks and Parse.Promises.
 
-We have curated a [migration guide](2.0.0.md) that should help you migrate your code.
+We have curated a [migration guide][migration] that should help you migrate your code.
+
+## 3rd Party Authentications
+
+Parse Server supports many [3rd Party Authenications][3rd-party-auth]. It is possible to [linkWith][link-with] any 3rd Party Authentication by creating a [custom authentication module][custom-auth-module].
 
 ## Want to ride the bleeding edge?
 
@@ -78,7 +111,7 @@ And don't forget, if you plan to deploy it remotely, you should run `npm install
 
 ## Contributing
 
-We really want Parse to be yours, to see it grow and thrive in the open source community. Please see the [Contributing to Parse Javascript SDK guide](CONTRIBUTING.md).
+We really want Parse to be yours, to see it grow and thrive in the open source community. Please see the [Contributing to Parse Javascript SDK guide][contributing].
 
 ## License
 
@@ -93,20 +126,11 @@ of patent rights can be found in the PATENTS file in the same directory.
 
 -----
 As of April 5, 2017, Parse, LLC has transferred this code to the parse-community organization, and will no longer be contributing to or distributing this code.
-
- [build-status-svg]: https://travis-ci.org/parse-community/Parse-SDK-JS.svg?branch=master
- [build-status-link]: https://travis-ci.org/parse-community/Parse-SDK-JS
- [coverage-status-svg]: http://codecov.io/github/parse-community/Parse-SDK-JS/coverage.svg?branch=master
- [coverage-status-link]: http://codecov.io/github/parse-community/Parse-SDK-JS?branch=master
- [npm-svg]: https://badge.fury.io/js/parse.svg
- [npm-link]: https://npmjs.org/parse
- [cdn-svg]: https://img.shields.io/cdnjs/v/parse.svg
- [cdn-link]: https://cdnjs.com/libraries/parse
- [discourse-svg]: https://img.shields.io/discourse/https/community.parseplatform.org/topics.svg
- [discourse-link]: https://community.parseplatform.org/c/sdk/js
- [license-svg]: https://img.shields.io/badge/license-BSD-lightgrey.svg
- [license-link]: https://github.com/parse-community/Parse-SDK-JS/blob/master/LICENSE
- [greenkeeper-svg]: https://badges.greenkeeper.io/parse-community/Parse-SDK-JS.svg
- [greenkeeper-link]: https://greenkeeper.io/
- [types-parse]: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/parse
- [open-collective-link]: https://opencollective.com/parse-server
+ 
+[3rd-party-auth]: http://docs.parseplatform.org/parse-server/guide/#oauth-and-3rd-party-authentication
+[contributing]: https://github.com/parse-community/Parse-SDK-JS/blob/master/CONTRIBUTING.md
+[custom-auth-module]: https://docs.parseplatform.org/js/guide/#custom-authentication-module
+[link-with]: https://docs.parseplatform.org/js/guide/#linking-users
+[migration]: https://github.com/parse-community/Parse-SDK-JS/blob/master/2.0.0.md
+[open-collective-link]: https://opencollective.com/parse-server
+[types-parse]: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/parse 

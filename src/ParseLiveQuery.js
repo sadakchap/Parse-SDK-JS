@@ -18,7 +18,6 @@ function getLiveQueryClient(): LiveQueryClient {
 }
 
 /**
- *
  * We expose three events to help you monitor the status of the WebSocket connection:
  *
  * <p>Open - When we establish the WebSocket connection to the LiveQuery server, you'll get this event.
@@ -44,7 +43,6 @@ function getLiveQueryClient(): LiveQueryClient {
  *
  * @class Parse.LiveQuery
  * @static
- *
  */
 const LiveQuery = new EventEmitter();
 
@@ -54,7 +52,7 @@ const LiveQuery = new EventEmitter();
  */
 LiveQuery.open = async () => {
   const liveQueryClient = await getLiveQueryClient();
-  return liveQueryClient.open();
+  liveQueryClient.open();
 };
 
 /**
@@ -64,10 +62,9 @@ LiveQuery.open = async () => {
  * If you call query.subscribe() after this, we'll create a new WebSocket
  * connection to the LiveQuery server.
  */
-
 LiveQuery.close = async () => {
   const liveQueryClient = await getLiveQueryClient();
-  return liveQueryClient.close();
+  liveQueryClient.close();
 };
 
 // Register a default onError callback to make sure we do not crash on error
@@ -86,7 +83,10 @@ const DefaultLiveQueryController = {
     if (defaultLiveQueryClient) {
       return defaultLiveQueryClient;
     }
-    const currentUser = await CoreManager.getUserController().currentUserAsync();
+    const [currentUser, installationId] = await Promise.all([
+      CoreManager.getUserController().currentUserAsync(),
+      CoreManager.getInstallationController().currentInstallationId(),
+    ]);
     const sessionToken = currentUser ? currentUser.getSessionToken() : undefined;
 
     let liveQueryServerURL = CoreManager.get('LIVEQUERY_SERVER_URL');
@@ -115,8 +115,9 @@ const DefaultLiveQueryController = {
       javascriptKey,
       masterKey,
       sessionToken,
+      installationId,
     });
-    defaultLiveQueryClient.on('error', (error) => {
+    defaultLiveQueryClient.on('error', error => {
       LiveQuery.emit('error', error);
     });
     defaultLiveQueryClient.on('open', () => {

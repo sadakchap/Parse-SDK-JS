@@ -8,10 +8,11 @@
  *
  * @flow
  */
+import { resolvingPromise } from './promiseUtils';
 
 type Task = {
-  task: () => Promise;
-  _completion: Promise
+  task: () => Promise,
+  _completion: Promise,
 };
 
 class TaskQueue {
@@ -22,26 +23,22 @@ class TaskQueue {
   }
 
   enqueue(task: () => Promise): Promise {
-    let res;
-    let rej;
-    const taskComplete = new Promise((resolve, reject) => {
-      res = resolve;
-      rej = reject;
-    });
-    taskComplete.resolve = res;
-    taskComplete.reject = rej;
+    const taskComplete = new resolvingPromise();
     this.queue.push({
       task: task,
-      _completion: taskComplete
+      _completion: taskComplete,
     });
     if (this.queue.length === 1) {
-      task().then(() => {
-        this._dequeue();
-        taskComplete.resolve();
-      }, (error) => {
-        this._dequeue();
-        taskComplete.reject(error);
-      });
+      task().then(
+        () => {
+          this._dequeue();
+          taskComplete.resolve();
+        },
+        error => {
+          this._dequeue();
+          taskComplete.reject(error);
+        }
+      );
     }
     return taskComplete;
   }
@@ -50,13 +47,16 @@ class TaskQueue {
     this.queue.shift();
     if (this.queue.length) {
       const next = this.queue[0];
-      next.task().then(() => {
-        this._dequeue();
-        next._completion.resolve();
-      }, (error) => {
-        this._dequeue();
-        next._completion.reject(error);
-      });
+      next.task().then(
+        () => {
+          this._dequeue();
+          next._completion.resolve();
+        },
+        error => {
+          this._dequeue();
+          next._completion.reject(error);
+        }
+      );
     }
   }
 }

@@ -10,15 +10,15 @@
 jest.dontMock('../FacebookUtils');
 
 class MockUser {
-  constructor () {
+  constructor() {
     this.className = '_User';
     this.attributes = {};
   }
   _isLinked() {}
-  _linkWith() {}
+  linkWith() {}
   _unlinkFrom() {}
   static _registerAuthenticationProvider() {}
-  static _logInWith() {}
+  static logInWith() {}
 }
 
 jest.setMock('../ParseUser', MockUser);
@@ -35,7 +35,7 @@ describe('FacebookUtils', () => {
     };
     global.FB = {
       init: () => {},
-      login: (cb) => {
+      login: cb => {
         cb({ authResponse });
       },
       getAuthResponse: () => authResponse,
@@ -82,12 +82,11 @@ describe('FacebookUtils', () => {
   });
 
   it('can init with options', () => {
-    jest.spyOn(console, 'warn')
-      .mockImplementationOnce(() => {
-        return {
-          call: () => {}
-        }
-      })
+    jest.spyOn(console, 'warn').mockImplementationOnce(() => {
+      return {
+        call: () => {},
+      };
+    });
     FacebookUtils.init({ status: true });
     expect(console.warn).toHaveBeenCalled();
   });
@@ -108,19 +107,23 @@ describe('FacebookUtils', () => {
     FacebookUtils.init();
     const user = new MockUser();
     const authData = {
-      id: '1234'
+      id: '1234',
     };
-    jest.spyOn(user, '_linkWith');
+    jest.spyOn(user, 'linkWith');
     await FacebookUtils.link(user, authData);
-    expect(user._linkWith).toHaveBeenCalledWith('facebook', { authData: { id: '1234' } }, undefined);
+    expect(user.linkWith).toHaveBeenCalledWith('facebook', { authData: { id: '1234' } }, undefined);
   });
 
   it('can link with options', async () => {
     FacebookUtils.init();
     const user = new MockUser();
-    jest.spyOn(user, '_linkWith');
+    jest.spyOn(user, 'linkWith');
     await FacebookUtils.link(user, {}, { useMasterKey: true });
-    expect(user._linkWith).toHaveBeenCalledWith('facebook', { authData: {} }, { useMasterKey: true });
+    expect(user.linkWith).toHaveBeenCalledWith(
+      'facebook',
+      { authData: {} },
+      { useMasterKey: true }
+    );
   });
 
   it('can check isLinked', async () => {
@@ -147,23 +150,27 @@ describe('FacebookUtils', () => {
 
   it('can login with permission string', async () => {
     FacebookUtils.init();
-    jest.spyOn(MockUser, '_logInWith');
+    jest.spyOn(MockUser, 'logInWith');
     await FacebookUtils.logIn('public_profile');
-    expect(MockUser._logInWith).toHaveBeenCalledTimes(1);
+    expect(MockUser.logInWith).toHaveBeenCalledTimes(1);
   });
 
   it('can login with authData', async () => {
     FacebookUtils.init();
-    jest.spyOn(MockUser, '_logInWith');
+    jest.spyOn(MockUser, 'logInWith');
     await FacebookUtils.logIn({ id: '1234' });
-    expect(MockUser._logInWith).toHaveBeenCalledTimes(1);
+    expect(MockUser.logInWith).toHaveBeenCalledTimes(1);
   });
 
   it('can login with options', async () => {
     FacebookUtils.init();
-    jest.spyOn(MockUser, '_logInWith');
+    jest.spyOn(MockUser, 'logInWith');
     await FacebookUtils.logIn({}, { useMasterKey: true });
-    expect(MockUser._logInWith).toHaveBeenCalledWith('facebook', { authData: {} }, {useMasterKey: true });
+    expect(MockUser.logInWith).toHaveBeenCalledWith(
+      'facebook',
+      { authData: {} },
+      { useMasterKey: true }
+    );
   });
 
   it('provider getAuthType', async () => {
@@ -200,7 +207,7 @@ describe('FacebookUtils provider', () => {
     };
     jest.spyOn(global.FB, 'logout');
     const provider = FacebookUtils._getAuthProvider();
-    provider.restoreAuthentication({ id: '1234'});
+    provider.restoreAuthentication({ id: '1234' });
     expect(global.FB.logout).toHaveBeenCalled();
   });
 
@@ -214,7 +221,7 @@ describe('FacebookUtils provider', () => {
     FacebookUtils.init({ status: false });
     jest.spyOn(global.FB, 'init');
     const provider = FacebookUtils._getAuthProvider();
-    provider.restoreAuthentication({ id: '1234'});
+    provider.restoreAuthentication({ id: '1234' });
     expect(global.FB.init).toHaveBeenCalled();
   });
 
@@ -228,14 +235,14 @@ describe('FacebookUtils provider', () => {
     FacebookUtils.init({ status: false });
     jest.spyOn(global.FB, 'init');
     const provider = FacebookUtils._getAuthProvider();
-    provider.restoreAuthentication({ id: '1234'});
+    provider.restoreAuthentication({ id: '1234' });
     expect(global.FB.init).toHaveBeenCalled();
   });
 
   it('authenticate without FB error', async () => {
     global.FB = undefined;
     const options = {
-      error: () => {}
+      error: () => {},
     };
     jest.spyOn(options, 'error');
     const provider = FacebookUtils._getAuthProvider();
@@ -254,28 +261,32 @@ describe('FacebookUtils provider', () => {
     };
     global.FB = {
       init: () => {},
-      login: (cb) => {
+      login: cb => {
         cb({ authResponse });
       },
     };
     const options = {
-      success: () => {}
+      success: () => {},
     };
     jest.spyOn(options, 'success');
     const provider = FacebookUtils._getAuthProvider();
     provider.authenticate(options);
-    expect(options.success).toHaveBeenCalledWith(provider, { access_token: 'access_token', expiration_date: null, id: '1234' });
+    expect(options.success).toHaveBeenCalledWith(provider, {
+      access_token: 'access_token',
+      expiration_date: null,
+      id: '1234',
+    });
   });
 
   it('authenticate with no FB response', async () => {
     global.FB = {
       init: () => {},
-      login: (cb) => {
+      login: cb => {
         cb({});
       },
     };
     const options = {
-      error: () => {}
+      error: () => {},
     };
     jest.spyOn(options, 'error');
     const provider = FacebookUtils._getAuthProvider();

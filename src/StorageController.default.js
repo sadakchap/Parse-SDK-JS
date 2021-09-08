@@ -7,6 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * @flow
+ * @private
  */
 
 // When there is no native storage interface, we default to an in-memory map
@@ -29,13 +30,17 @@ const StorageController = {
     delete memMap[path];
   },
 
+  getAllKeys() {
+    return Object.keys(memMap);
+  },
+
   clear() {
     for (const key in memMap) {
       if (memMap.hasOwnProperty(key)) {
         delete memMap[key];
       }
     }
-  }
+  },
 };
 
 module.exports = StorageController;
