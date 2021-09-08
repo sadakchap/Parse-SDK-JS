@@ -16,7 +16,7 @@ const encode = require('../encode').default;
 let objectCount = 0;
 
 class MockObject {
-  constructor (className) {
+  constructor(className) {
     this.className = className;
     this.attributes = {};
 
@@ -40,7 +40,7 @@ class MockObject {
   _toFullJSON() {
     const json = {
       __type: 'Object',
-      className: this.className
+      className: this.className,
     };
     for (const attr in this.attributes) {
       if (this.attributes[attr].id) {
@@ -100,9 +100,10 @@ const LocalDatastore = require('../LocalDatastore');
 const ParseObject = require('../ParseObject');
 const ParseQuery = require('../ParseQuery');
 const ParseUser = require('../ParseUser').default;
+const LocalDatastoreController = require('../LocalDatastoreController');
 const RNDatastoreController = require('../LocalDatastoreController.react-native');
-const BrowserDatastoreController = require('../LocalDatastoreController.browser');
-const DefaultDatastoreController = require('../LocalDatastoreController.default');
+const BrowserStorageController = require('../StorageController.browser');
+const DefaultStorageController = require('../StorageController.default');
 
 const item1 = new ParseObject('Item');
 const item2 = new ParseObject('Item');
@@ -116,7 +117,12 @@ const KEY1 = LocalDatastore.getKeyForObject(item1);
 const KEY2 = LocalDatastore.getKeyForObject(item2);
 const KEY3 = LocalDatastore.getKeyForObject(item2);
 
-import { DEFAULT_PIN, PIN_PREFIX, OBJECT_PREFIX, isLocalDatastoreKey } from '../LocalDatastoreUtils';
+import {
+  DEFAULT_PIN,
+  PIN_PREFIX,
+  OBJECT_PREFIX,
+  isLocalDatastoreKey,
+} from '../LocalDatastoreUtils';
 
 describe('LocalDatastore', () => {
   beforeEach(() => {
@@ -164,9 +170,11 @@ describe('LocalDatastore', () => {
     object._localId = 'local0';
     object.id = null;
     await LocalDatastore._handlePinAllWithName('test_pin', [object]);
-    expect(mockLocalStorageController.pinWithName.mock.calls[0][0]).toEqual('Parse_LDS_Item_local0');
+    expect(mockLocalStorageController.pinWithName.mock.calls[0][0]).toEqual(
+      'Parse_LDS_Item_local0'
+    );
     expect(mockLocalStorageController.pinWithName.mock.calls[0][1]).toEqual([
-      { __type: 'Object', className: 'Item', _localId: 'local0' }
+      { __type: 'Object', className: 'Item', _localId: 'local0' },
     ]);
   });
 
@@ -198,9 +206,7 @@ describe('LocalDatastore', () => {
     const LDS = {
       [DEFAULT_PIN]: [KEY1, KEY2],
     };
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
     await LocalDatastore._handleUnPinAllWithName(DEFAULT_PIN, [item1]);
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledTimes(1);
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(DEFAULT_PIN, [KEY2]);
@@ -210,12 +216,12 @@ describe('LocalDatastore', () => {
     const LDS = {
       parsePin_test_pin: [KEY1, KEY2],
     };
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
     await LocalDatastore._handleUnPinAllWithName('test_pin', [item1]);
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledTimes(1);
-    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(PIN_PREFIX + 'test_pin', [KEY2]);
+    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(PIN_PREFIX + 'test_pin', [
+      KEY2,
+    ]);
   });
 
   it('_handleUnPinAllWithName default pin remove pinName', async () => {
@@ -223,9 +229,7 @@ describe('LocalDatastore', () => {
     const LDS = {
       [DEFAULT_PIN]: [],
     };
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
     await LocalDatastore._handleUnPinAllWithName(DEFAULT_PIN, [object]);
     expect(mockLocalStorageController.unPinWithName).toHaveBeenCalledTimes(2);
     expect(mockLocalStorageController.unPinWithName).toHaveBeenCalledWith(DEFAULT_PIN);
@@ -236,9 +240,7 @@ describe('LocalDatastore', () => {
     const LDS = {
       [PIN_PREFIX + 'test_pin']: [],
     };
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
     await LocalDatastore._handleUnPinAllWithName('test_pin', [object]);
     expect(mockLocalStorageController.unPinWithName).toHaveBeenCalledTimes(2);
     expect(mockLocalStorageController.unPinWithName).toHaveBeenCalledWith(PIN_PREFIX + 'test_pin');
@@ -251,15 +253,16 @@ describe('LocalDatastore', () => {
       [PIN_PREFIX + 'test_pin_2']: objects,
       [KEY1]: [item1._toFullJSON()],
       [KEY2]: [item2._toFullJSON()],
-    }
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    };
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     await LocalDatastore._handleUnPinAllWithName('test_pin', [item1]);
 
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledTimes(1);
-    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(PIN_PREFIX + 'test_pin', [KEY2, KEY3]);
+    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(PIN_PREFIX + 'test_pin', [
+      KEY2,
+      KEY3,
+    ]);
   });
 
   it('_updateObjectIfPinned not pinned', async () => {
@@ -270,9 +273,7 @@ describe('LocalDatastore', () => {
   });
 
   it('_updateObjectIfPinned if pinned', async () => {
-    mockLocalStorageController
-      .fromPinWithName
-      .mockImplementationOnce(() => [item1]);
+    mockLocalStorageController.fromPinWithName.mockImplementationOnce(() => [item1]);
 
     LocalDatastore.isEnabled = true;
     await LocalDatastore._updateObjectIfPinned(item1);
@@ -281,7 +282,9 @@ describe('LocalDatastore', () => {
     expect(mockLocalStorageController.fromPinWithName.mock.results[0].value).toEqual([item1]);
 
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledTimes(1);
-    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(KEY1, [item1._toFullJSON()]);
+    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(KEY1, [
+      item1._toFullJSON(),
+    ]);
   });
 
   it('_updateLocalIdForObject not pinned', async () => {
@@ -298,13 +301,9 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [localKey],
       [localKey]: [json],
     };
-    mockLocalStorageController
-      .fromPinWithName
-      .mockImplementationOnce(() => json);
+    mockLocalStorageController.fromPinWithName.mockImplementationOnce(() => json);
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     await LocalDatastore._updateLocalIdForObject(localId, object);
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledTimes(2);
@@ -319,13 +318,9 @@ describe('LocalDatastore', () => {
       [PIN_PREFIX + 'test_pin']: [localKey],
       [localKey]: [json],
     };
-    mockLocalStorageController
-      .fromPinWithName
-      .mockImplementationOnce(() => json);
+    mockLocalStorageController.fromPinWithName.mockImplementationOnce(() => json);
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     await LocalDatastore._updateLocalIdForObject(localId, object);
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledTimes(2);
@@ -339,13 +334,9 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [object.id],
       [object.id]: [json],
     };
-    mockLocalStorageController
-      .fromPinWithName
-      .mockImplementationOnce(() => json);
+    mockLocalStorageController.fromPinWithName.mockImplementationOnce(() => json);
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     await LocalDatastore._updateLocalIdForObject(localId, object);
 
@@ -353,10 +344,15 @@ describe('LocalDatastore', () => {
     expect(mockLocalStorageController.fromPinWithName.mock.results[0].value).toEqual(json);
 
     expect(mockLocalStorageController.unPinWithName).toHaveBeenCalledTimes(1);
-    expect(mockLocalStorageController.unPinWithName).toHaveBeenCalledWith(`${OBJECT_PREFIX}Item_${localId}`);
+    expect(mockLocalStorageController.unPinWithName).toHaveBeenCalledWith(
+      `${OBJECT_PREFIX}Item_${localId}`
+    );
 
     expect(mockLocalStorageController.pinWithName).toHaveBeenCalledTimes(1);
-    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(`${OBJECT_PREFIX}Item_${object.id}`, json);
+    expect(mockLocalStorageController.pinWithName).toHaveBeenCalledWith(
+      `${OBJECT_PREFIX}Item_${object.id}`,
+      json
+    );
 
     expect(mockLocalStorageController.getAllContents).toHaveBeenCalledTimes(1);
   });
@@ -368,9 +364,7 @@ describe('LocalDatastore', () => {
       [KEY1]: [json],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     const results = await LocalDatastore._serializeObjectsFromPinName(null);
     expect(results).toEqual([json]);
@@ -387,9 +381,7 @@ describe('LocalDatastore', () => {
       randomName: [object.id],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     const results = await LocalDatastore._serializeObjectsFromPinName(DEFAULT_PIN);
     expect(results).toEqual([]);
@@ -409,21 +401,31 @@ describe('LocalDatastore', () => {
       [PIN_PREFIX + 'testPin']: [obj1.id, obj2.id, obj3.id],
     };
 
-    mockLocalStorageController
-      .fromPinWithName
+    mockLocalStorageController.fromPinWithName
       .mockImplementationOnce(() => LDS[obj1.id])
       .mockImplementationOnce(() => LDS[obj2.id])
       .mockImplementationOnce(() => LDS[obj3.id]);
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     const results = await LocalDatastore._serializeObjectsFromPinName('testPin');
     expect(results).toEqual([obj1._toFullJSON(), obj2._toFullJSON(), obj3._toFullJSON()]);
 
     expect(mockLocalStorageController.getAllContents).toHaveBeenCalledTimes(1);
     expect(mockLocalStorageController.fromPinWithName).toHaveBeenCalledTimes(3);
+  });
+
+  it('_serializeObjectsFromPinName null pin', async () => {
+    const LDS = {
+      [DEFAULT_PIN]: null,
+    };
+
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
+
+    const results = await LocalDatastore._serializeObjectsFromPinName(DEFAULT_PIN);
+    expect(results).toEqual([]);
+
+    expect(mockLocalStorageController.getAllContents).toHaveBeenCalledTimes(1);
   });
 
   it('_serializeObject no children', async () => {
@@ -436,9 +438,7 @@ describe('LocalDatastore', () => {
       [objectKey]: [json],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     const result = await LocalDatastore._serializeObject(objectKey);
     expect(result).toEqual(json);
@@ -475,9 +475,7 @@ describe('LocalDatastore', () => {
       [childKey]: [childJSON],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     const expectedResults = parent._toFullJSON();
     expectedResults.child = childJSON;
@@ -488,9 +486,7 @@ describe('LocalDatastore', () => {
   it('_destroyObjectIfPinned no objects found in pinName', async () => {
     let LDS = {};
     LocalDatastore.isEnabled = true;
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     await LocalDatastore._destroyObjectIfPinned(item1);
     expect(mockLocalStorageController.getAllContents).toHaveBeenCalledTimes(1);
@@ -504,9 +500,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     LocalDatastore.isEnabled = true;
     await LocalDatastore._destroyObjectIfPinned(item1);
@@ -525,9 +519,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [KEY2],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     LocalDatastore.isEnabled = true;
     await LocalDatastore._destroyObjectIfPinned(item2);
@@ -545,9 +537,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [KEY1, KEY2],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     LocalDatastore.isEnabled = true;
     await LocalDatastore._destroyObjectIfPinned(item1);
@@ -609,9 +599,7 @@ describe('LocalDatastore', () => {
     LocalDatastore.isSyncing = false;
     const LDS = {};
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     jest.spyOn(mockLocalStorageController, 'pinWithName');
     await LocalDatastore.updateFromServer();
@@ -628,9 +616,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [KEY1],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     item1.set('updatedField', 'foo');
     mockQueryFind.mockImplementationOnce(() => Promise.resolve([item1]));
@@ -661,9 +647,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [USER_KEY],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     user.set('updatedField', 'foo');
     mockQueryFind.mockImplementationOnce(() => Promise.resolve([user]));
@@ -695,9 +679,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [KEY1, OBJECT_KEY],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     item1.set('updatedField', 'foo');
     mockQueryFind.mockImplementationOnce(() => Promise.resolve([item1]));
@@ -722,9 +704,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [KEY1],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     mockQueryFind.mockImplementationOnce(() => {
       expect(LocalDatastore.isSyncing).toBe(true);
@@ -757,9 +737,7 @@ describe('LocalDatastore', () => {
       [DEFAULT_PIN]: [KEY1],
     };
 
-    mockLocalStorageController
-      .getAllContents
-      .mockImplementationOnce(() => LDS);
+    mockLocalStorageController.getAllContents.mockImplementationOnce(() => LDS);
 
     mockQueryFind
       .mockImplementationOnce(() => Promise.resolve([item1, item2]))
@@ -788,67 +766,10 @@ describe('LocalDatastore', () => {
   });
 });
 
-describe('BrowserDatastoreController', () => {
+describe('LocalDatastore (BrowserStorageController)', () => {
   beforeEach(async () => {
-    await BrowserDatastoreController.clear();
-  });
-
-  it('implement functionality', () => {
-    expect(typeof BrowserDatastoreController.fromPinWithName).toBe('function');
-    expect(typeof BrowserDatastoreController.pinWithName).toBe('function');
-    expect(typeof BrowserDatastoreController.unPinWithName).toBe('function');
-    expect(typeof BrowserDatastoreController.getAllContents).toBe('function');
-    expect(typeof BrowserDatastoreController.clear).toBe('function');
-  });
-
-  it('can store and retrieve values', async () => {
-    expect(await BrowserDatastoreController.fromPinWithName(KEY1)).toEqual([]);
-    await BrowserDatastoreController.pinWithName(KEY1, [item1._toFullJSON()]);
-    expect(await BrowserDatastoreController.fromPinWithName(KEY1)).toEqual([item1._toFullJSON()]);
-    expect(await BrowserDatastoreController.getAllContents()).toEqual({ [KEY1]: [item1._toFullJSON()] });
-  });
-
-  it('can remove values', async () => {
-    await BrowserDatastoreController.pinWithName(KEY1, [item1._toFullJSON()]);
-    expect(await BrowserDatastoreController.fromPinWithName(KEY1)).toEqual([item1._toFullJSON()]);
-    await BrowserDatastoreController.unPinWithName(KEY1);
-    expect(await BrowserDatastoreController.fromPinWithName(KEY1)).toEqual([]);
-    expect(await BrowserDatastoreController.getAllContents()).toEqual({});
-  });
-});
-
-describe('DefaultDatastoreController', () => {
-  beforeEach(async () => {
-    await DefaultDatastoreController.clear();
-  });
-
-  it('implement functionality', () => {
-    expect(typeof DefaultDatastoreController.fromPinWithName).toBe('function');
-    expect(typeof DefaultDatastoreController.pinWithName).toBe('function');
-    expect(typeof DefaultDatastoreController.unPinWithName).toBe('function');
-    expect(typeof DefaultDatastoreController.getAllContents).toBe('function');
-    expect(typeof DefaultDatastoreController.clear).toBe('function');
-  });
-
-  it('can store and retrieve values', async () => {
-    expect(await DefaultDatastoreController.fromPinWithName(KEY1)).toEqual([]);
-    await DefaultDatastoreController.pinWithName(KEY1, [item1._toFullJSON()]);
-    expect(await DefaultDatastoreController.fromPinWithName(KEY1)).toEqual([item1._toFullJSON()]);
-    expect(await DefaultDatastoreController.getAllContents()).toEqual({ [KEY1]: [item1._toFullJSON()] });
-  });
-
-  it('can remove values', async () => {
-    await DefaultDatastoreController.pinWithName(KEY1, [item1._toFullJSON()]);
-    expect(await DefaultDatastoreController.fromPinWithName(KEY1)).toEqual([item1._toFullJSON()]);
-    await DefaultDatastoreController.unPinWithName(KEY1);
-    expect(await DefaultDatastoreController.fromPinWithName(KEY1)).toEqual([]);
-    expect(await DefaultDatastoreController.getAllContents()).toEqual({});
-  });
-});
-
-describe('LocalDatastore (BrowserDatastoreController)', () => {
-  beforeEach(async () => {
-    CoreManager.setLocalDatastoreController(BrowserDatastoreController);
+    CoreManager.setStorageController(BrowserStorageController);
+    CoreManager.setLocalDatastoreController(LocalDatastoreController);
     await LocalDatastore._clear();
   });
 
@@ -856,8 +777,12 @@ describe('LocalDatastore (BrowserDatastoreController)', () => {
     expect(await LocalDatastore.fromPinWithName(KEY1)).toEqual([]);
     await LocalDatastore.pinWithName(KEY1, [item1._toFullJSON()]);
     expect(await LocalDatastore.fromPinWithName(KEY1)).toEqual([item1._toFullJSON()]);
-    expect(await LocalDatastore._getAllContents()).toEqual({ [KEY1]: [item1._toFullJSON()] });
-    expect(await LocalDatastore._getRawStorage()).toEqual({ [KEY1]: JSON.stringify([item1._toFullJSON()]) });
+    expect(await LocalDatastore._getAllContents()).toEqual({
+      [KEY1]: [item1._toFullJSON()],
+    });
+    expect(await LocalDatastore._getRawStorage()).toEqual({
+      [KEY1]: JSON.stringify([item1._toFullJSON()]),
+    });
   });
 
   it('can remove values', async () => {
@@ -871,7 +796,8 @@ describe('LocalDatastore (BrowserDatastoreController)', () => {
 
   it('can handle getAllContent error', async () => {
     await LocalDatastore.pinWithName('_default', [{ value: 'WILL_BE_MOCKED' }]);
-    const windowSpy = jest.spyOn(Object.getPrototypeOf(window.localStorage), 'getItem')
+    const windowSpy = jest
+      .spyOn(Object.getPrototypeOf(window.localStorage), 'getItem')
       .mockImplementationOnce(() => {
         return '[1, ]';
       });
@@ -884,7 +810,8 @@ describe('LocalDatastore (BrowserDatastoreController)', () => {
   });
 
   it('can handle store error', async () => {
-    const windowSpy = jest.spyOn(Object.getPrototypeOf(window.localStorage), 'setItem')
+    const windowSpy = jest
+      .spyOn(Object.getPrototypeOf(window.localStorage), 'setItem')
       .mockImplementationOnce(() => {
         throw new Error('error thrown');
       });
@@ -896,9 +823,10 @@ describe('LocalDatastore (BrowserDatastoreController)', () => {
   });
 });
 
-describe('LocalDatastore (DefaultDatastoreController)', () => {
+describe('LocalDatastore (DefaultStorageController)', () => {
   beforeEach(async () => {
-    CoreManager.setLocalDatastoreController(DefaultDatastoreController);
+    CoreManager.setStorageController(DefaultStorageController);
+    CoreManager.setLocalDatastoreController(LocalDatastoreController);
     await LocalDatastore._clear();
   });
 
@@ -906,8 +834,12 @@ describe('LocalDatastore (DefaultDatastoreController)', () => {
     expect(await LocalDatastore.fromPinWithName(KEY1)).toEqual([]);
     await LocalDatastore.pinWithName(KEY1, [item1._toFullJSON()]);
     expect(await LocalDatastore.fromPinWithName(KEY1)).toEqual([item1._toFullJSON()]);
-    expect(await LocalDatastore._getAllContents()).toEqual({ [KEY1]: [item1._toFullJSON()] });
-    expect(await LocalDatastore._getRawStorage()).toEqual({ [KEY1]: JSON.stringify([item1._toFullJSON()]) });
+    expect(await LocalDatastore._getAllContents()).toEqual({
+      [KEY1]: [item1._toFullJSON()],
+    });
+    expect(await LocalDatastore._getRawStorage()).toEqual({
+      [KEY1]: JSON.stringify([item1._toFullJSON()]),
+    });
   });
 
   it('can remove values', async () => {
@@ -931,8 +863,12 @@ describe('LocalDatastore (RNDatastoreController)', () => {
     expect(await LocalDatastore.fromPinWithName(KEY1)).toEqual([]);
     await LocalDatastore.pinWithName(KEY1, [item1._toFullJSON()]);
     expect(await LocalDatastore.fromPinWithName(KEY1)).toEqual([item1._toFullJSON()]);
-    expect(await LocalDatastore._getAllContents()).toEqual({ [KEY1]: [item1._toFullJSON()] });
-    expect(await LocalDatastore._getRawStorage()).toEqual({ [KEY1]: JSON.stringify([item1._toFullJSON()]) });
+    expect(await LocalDatastore._getAllContents()).toEqual({
+      [KEY1]: [item1._toFullJSON()],
+    });
+    expect(await LocalDatastore._getRawStorage()).toEqual({
+      [KEY1]: JSON.stringify([item1._toFullJSON()]),
+    });
   });
 
   it('can remove values', async () => {
@@ -980,7 +916,7 @@ describe('LocalDatastore (RNDatastoreController)', () => {
       },
       getAllKeys(cb) {
         cb(undefined, [KEY1, 'DO_NOT_CLEAR']);
-      }
+      },
     };
     jest.spyOn(console, 'error').mockImplementationOnce(() => {});
     CoreManager.setAsyncStorage(mockStorageError);
@@ -994,7 +930,7 @@ describe('LocalDatastore (RNDatastoreController)', () => {
       },
       getAllKeys(cb) {
         cb(undefined, [KEY1, 'DO_NOT_CLEAR']);
-      }
+      },
     };
     jest.spyOn(console, 'error').mockImplementationOnce(() => {});
     CoreManager.setAsyncStorage(mockStorageError);

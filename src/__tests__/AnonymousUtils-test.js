@@ -10,14 +10,14 @@
 jest.dontMock('../AnonymousUtils');
 
 class MockUser {
-  constructor () {
+  constructor() {
     this.className = '_User';
     this.attributes = {};
   }
   _isLinked() {}
-  _linkWith() {}
+  linkWith() {}
   static _registerAuthenticationProvider() {}
-  static _logInWith() {}
+  static logInWith() {}
 }
 
 jest.setMock('../ParseUser', MockUser);
@@ -45,11 +45,7 @@ const AnonymousUtils = require('../AnonymousUtils').default;
 describe('AnonymousUtils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(
-      AnonymousUtils,
-      '_getAuthProvider'
-    )
-      .mockImplementation(() => mockProvider);
+    jest.spyOn(AnonymousUtils, '_getAuthProvider').mockImplementation(() => mockProvider);
   });
 
   it('can register provider', () => {
@@ -71,18 +67,22 @@ describe('AnonymousUtils', () => {
 
   it('can link user', () => {
     const user = new MockUser();
-    jest.spyOn(user, '_linkWith');
+    jest.spyOn(user, 'linkWith');
     AnonymousUtils.link(user);
-    expect(user._linkWith).toHaveBeenCalledTimes(1);
-    expect(user._linkWith).toHaveBeenCalledWith('anonymous', mockProvider.getAuthData());
+    expect(user.linkWith).toHaveBeenCalledTimes(1);
+    expect(user.linkWith).toHaveBeenCalledWith('anonymous', mockProvider.getAuthData(), undefined);
     expect(AnonymousUtils._getAuthProvider).toHaveBeenCalledTimes(1);
   });
 
   it('can login user', () => {
-    jest.spyOn(MockUser, '_logInWith');
+    jest.spyOn(MockUser, 'logInWith');
     AnonymousUtils.logIn();
-    expect(MockUser._logInWith).toHaveBeenCalledTimes(1);
-    expect(MockUser._logInWith).toHaveBeenCalledWith('anonymous', mockProvider.getAuthData());
+    expect(MockUser.logInWith).toHaveBeenCalledTimes(1);
+    expect(MockUser.logInWith).toHaveBeenCalledWith(
+      'anonymous',
+      mockProvider.getAuthData(),
+      undefined
+    );
     expect(AnonymousUtils._getAuthProvider).toHaveBeenCalledTimes(1);
   });
 });
